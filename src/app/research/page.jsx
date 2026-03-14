@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Download, AlertTriangle, Save, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { RefreshCw, Download, AlertTriangle, Save, Plus, Trash2, CheckCircle, FileDown } from 'lucide-react';
 import Card from '@/components/Card';
 import StatCard from '@/components/StatCard';
 import LineChart from '@/components/charts/LineChart';
@@ -32,6 +32,8 @@ export default function ResearchPage() {
   const [thesisSaving, setThesisSaving] = useState(false);
   const [thesisDirty, setThesisDirty] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const modelRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetch('/api/portfolio')
@@ -277,6 +279,80 @@ export default function ResearchPage() {
   const livePe = (displayPrice && csvEps && csvEps > 0) ? displayPrice / csvEps : (valuation.peRatio ? Number(valuation.peRatio) : null);
   const liveFcfYield = (displayPrice && csvFcf && csvShares && csvShares > 0) ? (csvFcf / (displayPrice * csvShares)) * 100 : (valuation.fcfYield ? Number(valuation.fcfYield) : null);
   const livePs = (displayPrice && csvRevenue && csvShares && csvShares > 0) ? (displayPrice * csvShares) / csvRevenue : (valuation.priceToSales ? Number(valuation.priceToSales) : null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      // Capture model data BEFORE switching tabs (switching unmounts ValuationModel)
+      let modelData = modelRef.current?.getModelData?.() || null;
+
+      // Fallback: if ref wasn't available (e.g. on fundamentals tab), load from API
+      if (!modelData) {
+        try {
+          const modelRes = await fetch(`/api/model/${selectedTicker}`);
+          const modelJson = await modelRes.json();
+          if (modelJson.exists && modelJson.inputs) {
+            // Import the compute logic inline
+            const inp = modelJson.inputs;
+            const p = (v) => (v === '' || v === undefined || v === null || isNaN(Number(v))) ? 0 : Number(v);
+            const sharePrice = p(inp.sharePrice) || (livePrice || 0);
+            const targetPE = p(inp.targetPE);
+            const revG = p(inp.revenueGrowth), opexG = p(inp.opexGrowth), cogsG = p(inp.cogsGrowth);
+            const dilution = p(inp.netShareDilution), divG = p(inp.dividendGrowth), curDiv = p(inp.currentDividend);
+            const taxRate = p(inp.taxRate), baseYear = p(inp.baseYear);
+            const revenue = [p(inp.baseRevenue)]; for (let i=1;i<=5;i++) revenue.push(revenue[i-1]*(1+revG));
+            const cogs = [p(inp.baseCOGS)]; for (let i=1;i<=5;i++) cogs.push(cogs[i-1]*(1+cogsG));
+            const opex = [p(inp.baseOpex)]; for (let i=1;i<=5;i++) opex.push(opex[i-1]*(1+opexG));
+            const opIncome = [0,1,2,3,4,5].map(i => revenue[i]-cogs[i]-opex[i]);
+            const opMargin = [0,1,2,3,4,5].map(i => revenue[i]?opIncome[i]/revenue[i]:0);
+            const nonOpIncome = [p(inp.baseNonOpIncome),0,0,0,0,0];
+            const taxExpense = [p(inp.baseTaxExpense)]; for (let i=1;i<=5;i++) taxExpense.push(opIncome[i]*taxRate);
+            const netIncome = [0,1,2,3,4,5].map(i => opIncome[i]-taxExpense[i]+nonOpIncome[i]);
+            const shares = [p(inp.baseShares)]; for (let i=1;i<=5;i++) shares.push(shares[i-1]*(1+dilution));
+            const eps = [0,1,2,3,4,5].map(i => shares[i]?netIncome[i]/shares[i]:0);
+            const epsGrowth = (eps[0]&&eps[5])?Math.pow(eps[5]/eps[0],0.2)-1:0;
+            const targetPrice5 = targetPE*eps[5];
+            const priceCAGR = (sharePrice>0&&targetPrice5>0)?Math.pow(targetPrice5/sharePrice,0.2)-1:0;
+            const priceArr = [sharePrice]; for (let i=1;i<=5;i++) priceArr.push(priceArr[i-1]*(1+priceCAGR));
+            const divShares = [1]; for (let i=1;i<=5;i++){const df=sharePrice>0?(curDiv/sharePrice)*Math.pow((1+divG)/(1+priceCAGR),i-1):0;divShares.push((1+df)*divShares[i-1]);}
+            const totalCAGRNoDivs = priceCAGR;
+            const totalCAGR = (sharePrice>0&&divShares[5]*priceArr[5]>0)?Math.pow((divShares[5]*priceArr[5])/sharePrice,0.2)-1:0;
+            modelData = {
+              inputs: { ...inp, sharePrice },
+              computed: { yearLabels: [0,1,2,3,4,5].map(i=>baseYear+i), revenue, cogs, opex, opIncome, opMargin, nonOpIncome, taxExpense, netIncome, shares, eps, epsGrowth, priceArr, divShares, totalCAGRNoDivs, totalCAGR, priceTarget: priceArr[2], targetPrice5, priceCAGR },
+            };
+          }
+        } catch {}
+      }
+
+      const prevTab = activeResearchTab;
+      if (prevTab !== 'fundamentals') {
+        setActiveResearchTab('fundamentals');
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      const { exportReport } = await import('@/lib/exportReport');
+
+      await exportReport({
+        ticker: selectedTicker,
+        thesis,
+        model: modelData,
+        tickerData,
+        liveQuote,
+        displayPrice,
+      });
+
+      if (prevTab !== 'fundamentals') {
+        setActiveResearchTab(prevTab);
+      }
+      setToast({ message: 'Report exported!', type: 'success' });
+    } catch (e) {
+      console.error(e);
+      setToast({ message: `Export failed: ${e.message}`, type: 'error' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
@@ -616,7 +692,23 @@ export default function ResearchPage() {
                 </Card>
 
                 {/* ── Valuation Model ── */}
-                <ValuationModel ticker={selectedTicker} livePrice={livePrice} />
+                <ValuationModel ref={modelRef} ticker={selectedTicker} livePrice={livePrice} />
+
+                {/* ── Export Button ── */}
+                <div className="flex justify-center pt-2 pb-4">
+                  <button
+                    onClick={handleExport}
+                    disabled={exporting}
+                    className="flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white font-semibold rounded-2xl hover:from-gray-800 hover:to-gray-700 shadow-lg shadow-gray-300/40 hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                  >
+                    {exporting ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : (
+                      <FileDown size={16} />
+                    )}
+                    {exporting ? 'Generating Report...' : 'Export Research Report'}
+                  </button>
+                </div>
               </div>
             ) : null
           )}

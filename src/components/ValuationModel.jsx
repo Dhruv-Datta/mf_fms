@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { RefreshCw, Save, CheckCircle } from 'lucide-react';
 
 const DEFAULT_INPUTS = {
@@ -69,7 +69,7 @@ function CalcCell({ value, format = 'number', decimals = 2, bold = false, prefix
   );
 }
 
-export default function ValuationModel({ ticker, livePrice }) {
+const ValuationModel = forwardRef(function ValuationModel({ ticker, livePrice }, ref) {
   const [inputs, setInputs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -178,6 +178,11 @@ export default function ValuationModel({ ticker, livePrice }) {
       totalCAGRNoDivs, totalCAGR, priceTarget, targetPrice5, priceCAGR,
     };
   }, [inputs]);
+
+  // Expose model data for export
+  useImperativeHandle(ref, () => ({
+    getModelData: () => ({ inputs, computed: model }),
+  }), [inputs, model]);
 
   if (loading || !inputs || !model) {
     return <div className="skeleton h-80 rounded-2xl" />;
@@ -376,4 +381,6 @@ export default function ValuationModel({ ticker, livePrice }) {
       </div>
     </div>
   );
-}
+});
+
+export default ValuationModel;
