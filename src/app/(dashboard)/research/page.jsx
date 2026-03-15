@@ -255,7 +255,7 @@ export default function ResearchPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
         <div className="skeleton h-14 w-72 rounded-2xl mb-8" />
         <div className="skeleton h-96 rounded-3xl" />
       </div>
@@ -392,7 +392,7 @@ export default function ResearchPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+    <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -507,6 +507,10 @@ export default function ResearchPage() {
             <StatCard label="% of AUM" value={`${pctAum}%`} />
             <StatCard
               label="Unrealized Gain/Loss"
+              variant={
+                quoteLoading || !holding || !livePrice ? 'default' :
+                ((livePrice - holding.cost_basis) / holding.cost_basis >= 0 ? 'positive' : 'negative')
+              }
               value={
                 quoteLoading ? null :
                 (holding && livePrice)

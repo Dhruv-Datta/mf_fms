@@ -7,11 +7,11 @@ export default function DashboardLayout({ children }) {
     <AuthGate>
       <CacheProvider>
         <div className="min-h-screen relative overflow-hidden bg-white">
-          {/* Ambient background glows */}
-          <div className="fixed inset-0 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-emerald-200/20 rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-15%] right-[-5%] w-[450px] h-[450px] bg-teal-200/15 rounded-full blur-[100px]" />
-            <div className="absolute top-[30%] right-[10%] w-[300px] h-[300px] bg-cyan-200/10 rounded-full blur-[90px]" />
+          {/* Ambient background glows — fixed so they stay while scrolling */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-[-5%] left-[-2%] w-[300px] h-[300px] bg-emerald-200/12 rounded-full blur-[100px]" />
+            <div className="absolute top-[40%] right-[5%] w-[250px] h-[250px] bg-teal-200/10 rounded-full blur-[90px]" />
+            <div className="absolute bottom-[5%] left-[25%] w-[280px] h-[280px] bg-emerald-200/10 rounded-full blur-[100px]" />
           </div>
           <div className="relative z-10">
             <Navbar />

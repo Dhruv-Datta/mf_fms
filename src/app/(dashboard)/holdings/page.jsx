@@ -8,6 +8,10 @@ import Treemap from '@/components/Treemap';
 import Toast from '@/components/Toast';
 import { formatMoney, formatMoneyPrecise, formatPct, formatLargeNumber } from '@/lib/formatters';
 import { useCache } from '@/lib/CacheContext';
+import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function HoldingsPage() {
   const cache = useCache();
@@ -192,7 +196,7 @@ export default function HoldingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
         <div className="grid grid-cols-3 gap-6 mb-8">
           {[1,2,3].map(i => <div key={i} className="skeleton h-28 rounded-2xl" />)}
         </div>
@@ -233,12 +237,11 @@ export default function HoldingsPage() {
   const inputCls = "w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200";
 
   return (
-    <div className="max-w-7xl mx-auto px-6 lg:px-12 py-8">
+    <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Our Holdings</h1>
-          <p className="text-gray-500 mt-1">Track your positions and portfolio allocation</p>
         </div>
         <button
           onClick={refreshAll}
@@ -275,10 +278,11 @@ export default function HoldingsPage() {
             <StatCard label="Positions" value={holdings.length} />
             <StatCard
               label="Unrealized P&L"
+              variant={quotesLoaded ? (totalUnrealizedPnl >= 0 ? 'positive' : 'negative') : 'default'}
               value={quotesLoaded ? (
-                <span className={totalUnrealizedPnl >= 0 ? 'text-emerald-600' : 'text-red-500'}>
+                <>
                   {totalUnrealizedPnl >= 0 ? '+' : ''}{formatMoney(totalUnrealizedPnl)}
-                </span>
+                </>
               ) : <div className="h-8 w-28 rounded-lg skeleton" />}
             />
           </div>
@@ -510,7 +514,6 @@ export default function HoldingsPage() {
                     sectors[sector].count += 1;
                   });
                   const sorted = Object.entries(sectors).sort((a, b) => b[1].weight - a[1].weight);
-                  const maxWeight = sorted.length > 0 ? sorted[0][1].weight : 1;
 
                   const sectorColors = {
                     'Technology': '#10b981', 'Communication Services': '#06b6d4',
@@ -523,19 +526,65 @@ export default function HoldingsPage() {
 
                   if (sorted.length === 0) return <p className="text-gray-400 text-sm text-center py-6">No sector data</p>;
 
-                  return sorted.map(([sector, data]) => (
-                    <div key={sector} className="flex items-center gap-4 py-3 border-b border-gray-50 last:border-b-0">
-                      <span className="text-xs font-bold uppercase text-gray-700 w-[150px] truncate shrink-0">{sector}</span>
-                      <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(data.weight / maxWeight) * 100}%`, backgroundColor: sectorColors[sector] || '#10b981' }} />
+                  const labels = sorted.map(([s]) => s);
+                  const weights = sorted.map(([, d]) => d.weight);
+                  const colors = labels.map(s => sectorColors[s] || '#10b981');
+
+                  const chartData = {
+                    labels,
+                    datasets: [{
+                      data: weights,
+                      backgroundColor: colors,
+                      borderColor: '#fff',
+                      borderWidth: 2,
+                      hoverBorderWidth: 3,
+                      hoverOffset: 6,
+                    }],
+                  };
+
+                  const chartOptions = {
+                    cutout: '62%',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        backgroundColor: 'rgba(255,255,255,0.95)',
+                        titleColor: '#111827',
+                        bodyColor: '#6b7280',
+                        borderColor: '#e5e7eb',
+                        borderWidth: 1,
+                        cornerRadius: 12,
+                        padding: 12,
+                        titleFont: { weight: '700', size: 13 },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                          label: (ctx) => {
+                            const d = sorted[ctx.dataIndex][1];
+                            return ` ${ctx.parsed.toFixed(1)}%  ·  ${formatMoney(d.value)}  ·  ${d.count} pos`;
+                          },
+                        },
+                      },
+                    },
+                  };
+
+                  return (
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <div className="w-[220px] h-[220px] shrink-0">
+                        <Doughnut data={chartData} options={chartOptions} />
                       </div>
-                      <div className="flex items-center gap-5 shrink-0 text-xs text-gray-500">
-                        <span className="font-bold text-gray-900 text-sm">{data.weight.toFixed(1)}%</span>
-                        <span>{formatMoney(data.value)}</span>
-                        <span>{data.count} pos</span>
+                      <div className="space-y-1.5">
+                        {sorted.map(([sector, data]) => (
+                          <div key={sector} className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sectorColors[sector] || '#10b981' }} />
+                            <span className="text-[13px] text-gray-600 w-[160px] truncate">{sector}</span>
+                            <span className="text-[13px] font-semibold text-gray-900 tabular-nums w-[45px] text-right">{data.weight.toFixed(1)}%</span>
+                            <span className="text-[11px] text-gray-400 tabular-nums w-[72px] text-right">{formatMoney(data.value)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ));
+                  );
                 })()}
               </Card>
 
