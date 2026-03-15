@@ -114,7 +114,22 @@ function captureCharts() {
       const h = canvas.height;
       const label = canvas.closest('[data-chart-title]')?.getAttribute('data-chart-title') ||
         canvas.closest('.bg-white')?.querySelector('h3, p.text-sm.font-bold, .text-sm.font-semibold')?.textContent || '';
-      images.push({ url, label, width: w, height: h });
+      // Capture CAGR values from the sibling element below the chart
+      const cagrs = [];
+      const card = canvas.closest('[data-chart-title]') || canvas.closest('.bg-white');
+      if (card) {
+        const cagrContainer = card.querySelector('.border-t.border-gray-100');
+        if (cagrContainer) {
+          cagrContainer.querySelectorAll('div.text-center').forEach(el => {
+            const labelEl = el.querySelector('span.text-\\[10px\\], span.uppercase');
+            const valueEl = el.querySelector('span.font-bold');
+            if (labelEl && valueEl) {
+              cagrs.push({ label: labelEl.textContent.trim(), value: valueEl.textContent.trim() });
+            }
+          });
+        }
+      }
+      images.push({ url, label, width: w, height: h, cagrs });
 
       // Re-enable tooltip after capture
       if (chartInstance && tooltipWasEnabled) {
@@ -222,9 +237,20 @@ export async function exportReport({ ticker, thesis, model, tickerData, liveQuot
         }));
       }
       sections.push(new Paragraph({
-        spacing: { after: 160 },
+        spacing: { after: img.cagrs?.length ? 80 : 160 },
         children: [chartImageRun(img.url, img.width, img.height)],
       }));
+      // Add CAGR values below the chart
+      if (img.cagrs && img.cagrs.length > 0) {
+        sections.push(new Paragraph({
+          spacing: { after: 160 },
+          children: img.cagrs.flatMap((c, i) => [
+            ...(i > 0 ? [new TextRun({ text: '    ', font: FONT, size: 18 })] : []),
+            new TextRun({ text: `${c.label}: `, font: FONT, size: 18, color: COLORS.light }),
+            new TextRun({ text: c.value, font: FONT, size: 18, bold: true, color: c.value.startsWith('-') ? 'EF4444' : COLORS.primary }),
+          ]),
+        }));
+      }
     }
     sections.push(spacer());
   }
