@@ -1,0 +1,527 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCache } from '@/lib/CacheContext';
+import { formatMoneyPrecise, formatPct, formatLargeNumber } from '@/lib/formatters';
+import { Plus, X, ArrowRight, ArrowLeft, Eye, FlaskConical, TrendingUp, TrendingDown } from 'lucide-react';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+
+function autoExpand(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+/* ── Dip Finder Bar Chart (Chart.js) ──────────────────────────── */
+function DipFinder({ stocks, quotes }) {
+  const items = useMemo(() => {
+    return stocks
+      .map(s => {
+        const q = quotes[s.ticker];
+        if (!q?.dayChangePct) return null;
+        return { ticker: s.ticker, pct: q.dayChangePct };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.pct - a.pct); // highest first
+  }, [stocks, quotes]);
+
+  if (items.length === 0) return null;
+
+  const data = {
+    labels: items.map(i => i.ticker),
+    datasets: [
+      {
+        data: items.map(i => i.pct),
+        backgroundColor: items.map(i =>
+          i.pct >= 0 ? 'rgba(34, 197, 94, 0.75)' : 'rgba(239, 68, 68, 0.65)'
+        ),
+        hoverBackgroundColor: items.map(i =>
+          i.pct >= 0 ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.85)'
+        ),
+        borderRadius: 4,
+        barPercentage: 0.7,
+        categoryPercentage: 0.8,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}%`,
+        },
+        backgroundColor: '#1f2937',
+        titleFont: { size: 12, weight: 'bold' },
+        bodyFont: { size: 12 },
+        padding: 8,
+        cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          font: { size: 11, weight: '600' },
+          color: '#6b7280',
+        },
+        border: { display: false },
+      },
+      y: {
+        grid: {
+          color: 'rgba(0,0,0,0.05)',
+          drawTicks: false,
+        },
+        ticks: {
+          font: { size: 11 },
+          color: '#9ca3af',
+          callback: (v) => `${v}%`,
+          padding: 8,
+        },
+        border: { display: false },
+      },
+    },
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Dip Finder</h2>
+          <p className="text-xs text-gray-400">Price change for current trading day</p>
+        </div>
+      </div>
+      <div style={{ height: Math.max(260, items.length * 12 + 120) }}>
+        <Bar data={data} options={options} />
+      </div>
+    </div>
+  );
+}
+
+/* ── 52-Week Range Bar with Red→Green Gradient ────────────────── */
+function RangeBar({ low, high, current }) {
+  if (!low || !high || !current) return null;
+  const pct = Math.max(0, Math.min(100, ((current - low) / (high - low)) * 100));
+  return (
+    <div className="mt-1">
+      <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+        <span>{formatMoneyPrecise(low)}</span>
+        <span className="text-gray-500 font-medium text-[10px]">52W</span>
+        <span>{formatMoneyPrecise(high)}</span>
+      </div>
+      <div
+        className="relative h-1.5 rounded-full"
+        style={{
+          background: 'linear-gradient(90deg, #ef4444, #f59e0b, #22c55e)',
+        }}
+      >
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-white shadow-md"
+          style={{
+            left: `calc(${pct}% - 5px)`,
+            backgroundColor: pct > 66 ? '#22c55e' : pct > 33 ? '#f59e0b' : '#ef4444',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ── Stock Card ───────────────────────────────────────────────── */
+function StockCard({ stock, quote, onRemove, onMove, onUpdateNote, onUpdateResearch }) {
+  const isResearching = stock.stage === 'researching';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold text-gray-900">{stock.ticker}</span>
+            {isResearching && (
+              <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                RESEARCHING
+              </span>
+            )}
+          </div>
+          {quote?.price && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xl font-semibold text-gray-800">
+                {formatMoneyPrecise(quote.price)}
+              </span>
+              {quote.dayChange != null && (
+                <span className={`flex items-center gap-0.5 text-sm font-medium ${
+                  quote.dayChange >= 0 ? 'text-emerald-600' : 'text-red-500'
+                }`}>
+                  {quote.dayChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {formatPct(quote.dayChangePct)}
+                </span>
+              )}
+            </div>
+          )}
+          {!quote?.price && (
+            <div className="h-7 w-24 bg-gray-100 rounded animate-pulse mt-1" />
+          )}
+        </div>
+        <button
+          onClick={() => onRemove(stock.ticker)}
+          className="text-gray-300 hover:text-red-400 transition-colors p-1"
+          title="Remove"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* 52-week range */}
+      {quote && (
+        <RangeBar low={quote.fiftyTwoWeekLow} high={quote.fiftyTwoWeekHigh} current={quote.price} />
+      )}
+
+      {/* Key metrics row */}
+      {quote?.price && (
+        <div className="flex gap-3 mt-3 text-[11px] text-gray-500">
+          {quote.marketCap && <span>MCap {formatLargeNumber(quote.marketCap)}</span>}
+          {quote.trailingPE && <span>PE {quote.trailingPE.toFixed(1)}</span>}
+          {quote.evToEbitda && <span>EV/EBITDA {quote.evToEbitda.toFixed(1)}</span>}
+        </div>
+      )}
+
+      {/* Why I'm interested */}
+      <div className="mt-4">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Why I&apos;m Interested
+        </label>
+        <textarea
+          defaultValue={stock.note || ''}
+          placeholder="Quick note on why this stock is interesting..."
+          className="mt-1 w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
+          rows={2}
+          onInput={(e) => autoExpand(e.target)}
+          onBlur={(e) => onUpdateNote(stock.ticker, e.target.value)}
+        />
+      </div>
+
+      {/* Researching: two free-form sections */}
+      {isResearching && (
+        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+          {/* Fundamentals at a Glance */}
+          <div>
+            <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+              Fundamentals at a Glance
+            </label>
+            <textarea
+              defaultValue={stock.fundamentalsGlance || ''}
+              placeholder="Key fundamentals, metrics, financial highlights..."
+              className="mt-1 w-full text-sm text-gray-700 bg-blue-50/50 border border-blue-200/60 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+              rows={3}
+              onInput={(e) => autoExpand(e.target)}
+              onBlur={(e) => onUpdateResearch(stock.ticker, 'fundamentalsGlance', e.target.value)}
+            />
+          </div>
+
+          {/* Dislocation Questions */}
+          <div>
+            <label className="text-xs font-semibold text-amber-600 uppercase tracking-wide flex items-center gap-1.5">
+              <FlaskConical size={12} />
+              Dislocation Questions
+            </label>
+            <textarea
+              defaultValue={stock.dislocationNotes || ''}
+              placeholder="Your dislocation questions and analysis..."
+              className="mt-1 w-full text-sm text-gray-700 bg-amber-50/50 border border-amber-200/60 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-300 transition-all"
+              rows={3}
+              onInput={(e) => autoExpand(e.target)}
+              onBlur={(e) => onUpdateResearch(stock.ticker, 'dislocationNotes', e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-4 flex justify-end">
+        {stock.stage === 'watching' ? (
+          <button
+            onClick={() => onMove(stock.ticker, 'researching')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Move to Researching <ArrowRight size={13} />
+          </button>
+        ) : (
+          <button
+            onClick={() => onMove(stock.ticker, 'watching')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <ArrowLeft size={13} /> Back to Watching
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page ────────────────────────────────────────────────── */
+export default function WatchlistPage() {
+  const cache = useCache();
+  const [stocks, setStocks] = useState([]);
+  const [quotes, setQuotes] = useState({});
+  const [tickerInput, setTickerInput] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Load watchlist
+  const loadWatchlist = useCallback(async () => {
+    try {
+      const cached = cache.get('watchlist_data');
+      if (cached) {
+        setStocks(cached.stocks || []);
+        setLoading(false);
+        return cached.stocks || [];
+      }
+      const res = await fetch('/api/watchlist');
+      const data = await res.json();
+      setStocks(data.stocks || []);
+      cache.set('watchlist_data', data);
+      setLoading(false);
+      return data.stocks || [];
+    } catch {
+      setLoading(false);
+      return [];
+    }
+  }, [cache]);
+
+  // Save watchlist
+  const saveWatchlist = useCallback(async (updatedStocks) => {
+    const data = { stocks: updatedStocks };
+    cache.set('watchlist_data', data);
+    await fetch('/api/watchlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  }, [cache]);
+
+  // Fetch quotes
+  const fetchQuotes = useCallback(async (stockList) => {
+    const tickers = stockList.map(s => s.ticker).filter(Boolean);
+    if (tickers.length === 0) return;
+    try {
+      const cachedQuotes = cache.get('watchlist_quotes');
+      if (cachedQuotes) {
+        setQuotes(cachedQuotes);
+        return;
+      }
+      const res = await fetch(`/api/quotes?tickers=${tickers.join(',')}`);
+      const data = await res.json();
+      setQuotes(data.quotes || {});
+      cache.set('watchlist_quotes', data.quotes || {});
+    } catch {
+      // silent
+    }
+  }, [cache]);
+
+  useEffect(() => {
+    loadWatchlist().then(s => {
+      if (s.length > 0) fetchQuotes(s);
+    });
+  }, [loadWatchlist, fetchQuotes]);
+
+  // Add stock
+  const addStock = async () => {
+    const ticker = tickerInput.trim().toUpperCase();
+    if (!ticker || stocks.some(s => s.ticker === ticker)) {
+      setTickerInput('');
+      return;
+    }
+    const newStock = {
+      ticker,
+      stage: 'watching',
+      note: '',
+      fundamentalsGlance: '',
+      dislocationNotes: '',
+      addedAt: new Date().toISOString(),
+    };
+    const updated = [...stocks, newStock];
+    setStocks(updated);
+    setTickerInput('');
+    await saveWatchlist(updated);
+    // Fetch quote for new ticker
+    try {
+      const res = await fetch(`/api/quotes?tickers=${ticker}`);
+      const data = await res.json();
+      if (data.quotes) {
+        setQuotes(prev => {
+          const merged = { ...prev, ...data.quotes };
+          cache.set('watchlist_quotes', merged);
+          return merged;
+        });
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  // Remove stock
+  const removeStock = async (ticker) => {
+    const updated = stocks.filter(s => s.ticker !== ticker);
+    setStocks(updated);
+    await saveWatchlist(updated);
+  };
+
+  // Move stage
+  const moveStock = async (ticker, newStage) => {
+    const updated = stocks.map(s =>
+      s.ticker === ticker ? { ...s, stage: newStage } : s
+    );
+    setStocks(updated);
+    await saveWatchlist(updated);
+  };
+
+  // Update note
+  const updateNote = async (ticker, note) => {
+    const updated = stocks.map(s =>
+      s.ticker === ticker ? { ...s, note } : s
+    );
+    setStocks(updated);
+    await saveWatchlist(updated);
+  };
+
+  // Update research fields (fundamentalsGlance or dislocationNotes)
+  const updateResearch = async (ticker, field, value) => {
+    const updated = stocks.map(s =>
+      s.ticker === ticker ? { ...s, [field]: value } : s
+    );
+    setStocks(updated);
+    await saveWatchlist(updated);
+  };
+
+  const watching = stocks.filter(s => s.stage === 'watching');
+  const researching = stocks.filter(s => s.stage === 'researching');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-24 px-6 lg:px-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-48 bg-white rounded-2xl border border-gray-200 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-24 px-6 lg:px-12 pb-16">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Watchlist</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {stocks.length} stock{stocks.length !== 1 ? 's' : ''} tracked
+              {researching.length > 0 && ` · ${researching.length} in research`}
+            </p>
+          </div>
+
+          {/* Add stock */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); addStock(); }}
+            className="flex items-center gap-2"
+          >
+            <input
+              value={tickerInput}
+              onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
+              placeholder="TICKER"
+              className="w-28 text-sm font-semibold text-gray-800 bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 uppercase placeholder:text-gray-400 placeholder:font-normal"
+            />
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg transition-colors shadow-sm"
+            >
+              <Plus size={15} />
+              Add
+            </button>
+          </form>
+        </div>
+
+        {stocks.length === 0 && (
+          <div className="text-center py-24">
+            <Eye size={48} className="mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-500">No stocks on your watchlist</h3>
+            <p className="text-sm text-gray-400 mt-1">Add a ticker above to start tracking</p>
+          </div>
+        )}
+
+        {/* Dip Finder */}
+        {stocks.length > 0 && Object.keys(quotes).length > 0 && (
+          <DipFinder stocks={stocks} quotes={quotes} />
+        )}
+
+        {/* Watching Section */}
+        {watching.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <Eye size={18} className="text-emerald-600" />
+              <h2 className="text-lg font-bold text-gray-800">Watching</h2>
+              <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">
+                {watching.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {watching.map(stock => (
+                <StockCard
+                  key={stock.ticker}
+                  stock={stock}
+                  quote={quotes[stock.ticker]}
+                  onRemove={removeStock}
+                  onMove={moveStock}
+                  onUpdateNote={updateNote}
+                  onUpdateResearch={updateResearch}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Currently Researching Section */}
+        {researching.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <FlaskConical size={18} className="text-amber-600" />
+              <h2 className="text-lg font-bold text-gray-800">Currently Researching</h2>
+              <span className="text-xs text-gray-400 font-medium bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
+                {researching.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {researching.map(stock => (
+                <StockCard
+                  key={stock.ticker}
+                  stock={stock}
+                  quote={quotes[stock.ticker]}
+                  onRemove={removeStock}
+                  onMove={moveStock}
+                  onUpdateNote={updateNote}
+                  onUpdateResearch={updateResearch}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}

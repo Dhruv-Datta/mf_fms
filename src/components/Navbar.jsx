@@ -4,11 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Briefcase, Search } from 'lucide-react';
+import { Briefcase, Search, Eye } from 'lucide-react';
 
 const navLinks = [
   { href: '/holdings', label: 'Our Holdings', icon: Briefcase },
   { href: '/research', label: 'Research', icon: Search },
+  { href: '/watchlist', label: 'Watchlist', icon: Eye },
 ];
 
 export default function Navbar() {

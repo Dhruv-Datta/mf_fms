@@ -1,0 +1,45 @@
+{
+  "stocks": [
+    {
+      "ticker": "NOW",
+      "stage": "watching",
+      "note": "",
+      "dislocation": {
+        "mispricing": "",
+        "marketVsYou": "",
+        "catalyst": "",
+        "downsideRisk": "",
+        "variantPerception": ""
+      },
+      "addedAt": "2026-03-15T02:31:51.477Z"
+    },
+    {
+      "ticker": "INTU",
+      "stage": "researching",
+      "note": "asdfsd",
+      "dislocation": {
+        "mispricing": "",
+        "marketVsYou": "",
+        "catalyst": "",
+        "downsideRisk": "",
+        "variantPerception": ""
+      },
+      "addedAt": "2026-03-15T02:32:29.555Z",
+      "fundamentalsGlance": "",
+      "dislocationNotes": ""
+    },
+    {
+      "ticker": "MSFT",
+      "stage": "researching",
+      "note": "",
+      "dislocation": {
+        "mispricing": "",
+        "marketVsYou": "",
+        "catalyst": "",
+        "downsideRisk": "",
+        "variantPerception": ""
+      },
+      "addedAt": "2026-03-15T02:33:15.700Z"
+    }
+  ]
+}
