@@ -857,7 +857,7 @@ export default function WatchlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 px-6 lg:px-12">
+      <div className="min-h-screen px-6 lg:px-12">
         <div className="max-w-7xl mx-auto">
           <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -871,7 +871,7 @@ export default function WatchlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 lg:px-12 pb-16">
+    <div className="min-h-screen px-6 lg:px-12 pb-16">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
