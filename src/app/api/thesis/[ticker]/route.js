@@ -9,7 +9,7 @@ function thesisPath(ticker) {
 }
 
 const DEFAULT_THESIS = {
-  coreReasons: ['', '', ''],
+  coreReasons: [{ title: '', description: '' }, { title: '', description: '' }, { title: '', description: '' }],
   assumptions: '',
   valuation: '',
   underwriting: {

@@ -33,7 +33,7 @@ function fmtPct(v, decimals = 1) {
   return (v * 100).toFixed(decimals) + '%';
 }
 
-function InputCell({ value, onChange, pct = false, dollar = false, suffix = '', placeholder, className = '' }) {
+function InputCell({ value, onChange, onBlur, pct = false, dollar = false, suffix = '', placeholder, className = '' }) {
   const displayValue = pct && value !== '' && value !== undefined ? (Number(value) * 100) : value;
   const hasSuffix = pct || suffix;
   return (
@@ -49,6 +49,7 @@ function InputCell({ value, onChange, pct = false, dollar = false, suffix = '', 
           onChange(pct ? Number(raw) / 100 : Number(raw));
         }}
         placeholder={placeholder}
+        onBlur={onBlur}
         className={`w-full bg-sky-50/80 border border-sky-200/60 rounded py-1.5 text-[13px] font-medium text-gray-900 outline-none focus:ring-1.5 focus:ring-sky-400 focus:border-sky-400 focus:bg-sky-50 transition-all text-right tabular-nums placeholder:text-gray-300 ${dollar ? 'pl-6' : 'pl-2.5'} ${hasSuffix ? 'pr-6' : 'pr-2.5'} ${className}`}
       />
       {pct && <span className="absolute right-2.5 text-[11px] font-medium text-gray-400 pointer-events-none">%</span>}
@@ -104,8 +105,8 @@ const ValuationModel = forwardRef(function ValuationModel({ ticker, livePrice },
     setDirty(true);
   }, []);
 
-  const save = async () => {
-    if (!ticker || !inputs) return;
+  const save = useCallback(async () => {
+    if (!ticker || !inputs || !dirty) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/model/${ticker}`, {
@@ -116,7 +117,7 @@ const ValuationModel = forwardRef(function ValuationModel({ ticker, livePrice },
       const result = await res.json();
       if (result.success) setDirty(false);
     } catch {} finally { setSaving(false); }
-  };
+  }, [ticker, inputs, dirty]);
 
   const model = useMemo(() => {
     if (!inputs) return null;
@@ -213,7 +214,7 @@ const ValuationModel = forwardRef(function ValuationModel({ ticker, livePrice },
   ];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden" onBlur={save}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <div>

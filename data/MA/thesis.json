@@ -1,0 +1,32 @@
+{
+  "coreReasons": [
+    {
+      "title": "The business is becoming more than just a card network",
+      "description": "Value Added Services like fraud, identity, analytics, and consulting are around 40% of Revenues and growing at 20% CAGR compared to the traditional payment rails growing around 11 to 12%. This hedges a lot of the risk with payment rails currently and make the revenue growth in the mid teens."
+    },
+    {
+      "title": "Mastercard is a global toll road on spending",
+      "description": "Inflationary environments naturally expand gross dollar volume (GDV) which increase assessment fees without increasing operating costs."
+    },
+    {
+      "title": "Mastercard’s moat is deeper than people think",
+      "description": "Its moat is not just the card swipe. It is the network, data, fraud tools, trust, acceptance, and customer relationships built on top of that network. There are some  potential disruptions people think could dethrone MA and V place in global payments like stablecoins, FedNow, Pix, and other account to account rails. However, those rails may pressure some low value domestic debit flows, but they do not replicate Mastercard’s credit linkage, fraud protection, dispute handling, global acceptance, cross border reach, or service stack."
+    },
+    {
+      "title": "It is an elite compounding machine",
+      "description": "The company has high margins, low capital needs, strong free cash flow, and buybacks that help EPS grow faster than revenue. The stock may look expensive on a headline multiple, but after you account for reliable growth and margins as well as what the business traded for historically, it looks cheap at a 30 P/E Ratio.\n"
+    }
+  ],
+  "assumptions": "Our model assumes Mastercard can keep compounding because the story is still intact. Global spending continues shifting toward electronic payments, stablecoins and government rails are more debit focused and do not pose a real risk to MA current spending pool they are profiting off, and the core network keeps growing as more payment volume flows across its rails. On top of that, we assume Value Added Services continues to grow faster than the core business and becomes a larger share of revenue over time, which supports better growth quality, stronger customer stickiness, and a little margin expansion. However, we also take into consideration that dislocations and maturation of the company can have an effect on growth going forward. The only real place we can foresee dislocations having an impact on revenues would be in cross border payments as stablecoins would have a slightly higher chance in taking more market share there as debit type payments are a little bit more common cross border and European countries if they end up making their own payment rails). However, the growth does not crater because more then 40% of revenues come from VAS which has grown 20%+ and will continue growing no matter any dislocations that are presented currently, as it is not at risk with the payment rails since it is a separate offering.\n\nThat is why we underwrite roughly 12% revenue CAGR over 5 years rather than assuming it sticks with a 15% to 16% growth historically seen, with operating expenses growing more slowly allowing operating margins to ultimately stagnate around 59% due to operating leverage discussed by management (specifically how they would have hit 59% operating margins if not for some one time litigation expenses that are non recurring). We also assume Mastercard keeps its asset light, high cash flow model and uses that cash the same way it has historically: disciplined reinvestment, steady dividend growth, and about 2% annual buybacks, which helps drive EPS growth faster than revenue. This leads to EPS compounding at roughly 15.9% annually. The 32x exit P/E reflects the belief that the market will continue valuing Mastercard as a premium quality business because of its growth and  competitive positioning, while also being prudent and accounting for a deceleration and potential dislocations lingering. This leads to an output of 17.97% 5Y CAGR including dividends reinvested. Our assumptions come from the view that Mastercard is evolving from a payments toll road into a broader financial infrastructure and data services platform, and that this stronger, more diversified model deserves both durable growth and a premium multiple.",
+  "valuation": "",
+  "underwriting": {
+    "revenueCAGR": "",
+    "operatingMargin": "",
+    "buybackRate": "",
+    "exitPE": "",
+    "exitFCFYield": "",
+    "terminalGrowthRate": ""
+  },
+  "newsUpdates": [],
+  "updatedAt": "2026-03-15T00:34:18.863Z"
+}

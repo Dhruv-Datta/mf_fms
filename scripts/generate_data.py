@@ -197,6 +197,7 @@ def generate_data(ticker: str, data_dir: Path, api_key: Optional[str] = None):
 
     revenue_q = _pick_series(income_q, ["totalRevenue"])
     revenue_a = _pick_series(income_a, ["totalRevenue"])
+
     operating_income_q = _pick_series(income_q, ["operatingIncome"])
     operating_income_a = _pick_series(income_a, ["operatingIncome"])
     net_income_q = _pick_series(income_q, ["netIncome", "netIncomeFromContinuingOperations"])

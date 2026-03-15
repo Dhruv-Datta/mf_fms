@@ -233,11 +233,24 @@ export async function exportReport({ ticker, thesis, model, tickerData, liveQuot
   if (thesis) {
     sections.push(heading('Investment Thesis', HeadingLevel.HEADING_1));
 
-    // Core reasons
-    const reasons = (thesis.coreReasons || []).filter(r => r && r.trim());
+    // Core reasons (supports both old string format and new {title, description} format)
+    const reasons = (thesis.coreReasons || [])
+      .map(r => typeof r === 'string' ? { title: r, description: '' } : r)
+      .filter(r => r.title && r.title.trim());
     if (reasons.length > 0) {
       sections.push(heading('Core Reasons for Ownership', HeadingLevel.HEADING_2));
-      reasons.forEach(r => sections.push(bulletPoint(r)));
+      reasons.forEach(r => {
+        sections.push(bulletPoint(r.title));
+        if (r.description && r.description.trim()) {
+          r.description.split('\n').filter(l => l.trim()).forEach(line =>
+            sections.push(new Paragraph({
+              spacing: { after: 60 },
+              indent: { left: 720 },
+              children: [new TextRun({ text: line, font: FONT, size: 19, color: COLORS.mid })],
+            }))
+          );
+        }
+      });
       sections.push(spacer(100));
     }
 
@@ -295,107 +308,201 @@ export async function exportReport({ ticker, thesis, model, tickerData, liveQuot
 
   // ═══════════ VALUATION MODEL ═══════════
   if (model) {
-    sections.push(heading('Valuation Model', HeadingLevel.HEADING_1));
+    sections.push(heading('EPS Based Valuation Model', HeadingLevel.HEADING_1));
 
-    // Assumptions summary table
     const inp = model.inputs || {};
     const has = (v) => v !== '' && v !== undefined && v !== null;
-    const assumptions = [];
-    if (has(inp.sharePrice)) assumptions.push(['Share Price', `$${fmt(Number(inp.sharePrice))}`]);
-    if (has(inp.targetPE)) assumptions.push(['Target P/E Multiple', `${inp.targetPE}x`]);
-    if (has(inp.revenueGrowth)) assumptions.push(['Revenue Growth', fmtPct(Number(inp.revenueGrowth))]);
-    if (has(inp.opexGrowth)) assumptions.push(['OpEx Growth', fmtPct(Number(inp.opexGrowth))]);
-    if (has(inp.cogsGrowth)) assumptions.push(['COGS Growth', fmtPct(Number(inp.cogsGrowth))]);
-    if (has(inp.netShareDilution)) assumptions.push(['Net Share Dilution', fmtPct(Number(inp.netShareDilution))]);
-    if (has(inp.taxRate)) assumptions.push(['Tax Rate', fmtPct(Number(inp.taxRate))]);
-    if (has(inp.dividendGrowth) && Number(inp.dividendGrowth) !== 0) assumptions.push(['Dividend Growth', fmtPct(Number(inp.dividendGrowth))]);
-    if (has(inp.currentDividend) && Number(inp.currentDividend) !== 0) assumptions.push(['Current Dividend', `$${fmt(Number(inp.currentDividend))}`]);
-    if (model.computed?.epsGrowth) assumptions.push(['Implied EPS Growth (5Y)', fmtPct(model.computed.epsGrowth, 2)]);
 
-    if (assumptions.length) {
-      sections.push(heading('Model Assumptions', HeadingLevel.HEADING_2));
-      sections.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: lightBorders(),
-        rows: [
-          new TableRow({
-            children: [
-              makeCell('Assumption', { bold: true, shading: COLORS.headerBg, width: 50 }),
-              makeCell('Value', { bold: true, shading: COLORS.headerBg, align: AlignmentType.RIGHT, width: 50 }),
-            ],
-          }),
-          ...assumptions.map((r, i) => new TableRow({
-            children: [
-              makeCell(r[0], { shading: i % 2 ? COLORS.rowAlt : COLORS.white }),
-              makeCell(r[1], { align: AlignmentType.RIGHT, bold: true, shading: i % 2 ? COLORS.rowAlt : COLORS.white }),
-            ],
-          })),
-        ],
-      }));
-      sections.push(spacer(200));
+    // --- Helper: clean academic-style cell (no background, no vertical borders) ---
+    const TB_NONE = { style: BorderStyle.NONE, size: 0, color: COLORS.white };
+    const TB_LINE = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
+    const TB_THIN = { style: BorderStyle.SINGLE, size: 1, color: '999999' };
+
+    function cleanCell(text, opts = {}) {
+      const borders = {
+        top: opts.borderTop ? TB_LINE : TB_NONE,
+        bottom: opts.borderBottom ? TB_LINE : TB_NONE,
+        left: TB_NONE,
+        right: TB_NONE,
+      };
+      return new TableCell({
+        width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+        borders,
+        margins: { top: 30, bottom: 30, left: 60, right: 60 },
+        children: [new Paragraph({
+          alignment: opts.align || AlignmentType.LEFT,
+          children: [new TextRun({
+            text: String(text ?? ''),
+            font: FONT,
+            size: opts.size || 19,
+            bold: opts.bold,
+            color: opts.color || COLORS.dark,
+          })],
+        })],
+      });
     }
 
-    // Projection table
-    if (model.computed) {
-      sections.push(heading('5-Year Projections', HeadingLevel.HEADING_2));
+    // ── Top inputs table 1: Ticker | Share Price | Current Dividend | Target P/E Multiple ──
+    const inputRow1Header = ['Ticker', 'Share Price', 'Current Dividend', 'Target P/E Multiple'];
+    const inputRow1Values = [
+      ticker,
+      has(inp.sharePrice) ? `$${fmt(Number(inp.sharePrice))}` : '—',
+      has(inp.currentDividend) && Number(inp.currentDividend) !== 0 ? `$${fmt(Number(inp.currentDividend))}` : '$0.00',
+      has(inp.targetPE) ? fmt(Number(inp.targetPE), 2) : '—',
+    ];
 
+    sections.push(spacer(100));
+    sections.push(new Table({
+      width: { size: 80, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: inputRow1Header.map(h =>
+            cleanCell(h, { bold: true, align: AlignmentType.CENTER, borderTop: true, borderBottom: true })
+          ),
+        }),
+        new TableRow({
+          children: inputRow1Values.map(v =>
+            cleanCell(v, { align: AlignmentType.CENTER, borderBottom: true })
+          ),
+        }),
+      ],
+    }));
+
+    sections.push(spacer(200));
+
+    // ── Top inputs table 2: Revenue Growth | COGS Growth | OpEx Growth | Net Share Dilution | Dividend Growth % | Tax Rate ──
+    const inputRow2Header = ['Revenue Growth', 'COGS Growth', 'OpEx Growth', 'Net Share Dilution', 'Dividend Growth %', 'Tax Rate'];
+    const inputRow2Values = [
+      has(inp.revenueGrowth) ? fmtPct(Number(inp.revenueGrowth), 2) : '—',
+      has(inp.cogsGrowth) ? fmtPct(Number(inp.cogsGrowth), 2) : '0.00%',
+      has(inp.opexGrowth) ? fmtPct(Number(inp.opexGrowth), 2) : '—',
+      has(inp.netShareDilution) ? fmtPct(Number(inp.netShareDilution), 2) : '—',
+      has(inp.dividendGrowth) ? fmtPct(Number(inp.dividendGrowth), 2) : '0.00%',
+      has(inp.taxRate) ? fmtPct(Number(inp.taxRate), 2) : '21.00%',
+    ];
+
+    sections.push(new Table({
+      width: { size: 80, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: inputRow2Header.map(h =>
+            cleanCell(h, { bold: true, align: AlignmentType.CENTER, borderTop: true, borderBottom: true })
+          ),
+        }),
+        new TableRow({
+          children: inputRow2Values.map(v =>
+            cleanCell(v, { align: AlignmentType.CENTER, borderBottom: true })
+          ),
+        }),
+      ],
+    }));
+
+    sections.push(spacer(300));
+
+    // ── Main projection table ──
+    if (model.computed) {
       const yearLabels = model.computed.yearLabels || [];
+      const numCols = 1 + yearLabels.length; // label col + year cols
+      const labelWidth = 30;
+      const yearWidth = (100 - labelWidth) / yearLabels.length;
+
+      // Projection rows with grouping info for separator lines — matches the on-screen model exactly
       const projRows = [
-        { label: 'Revenue (bil)', data: model.computed.revenue, fmt: v => `$${fmt(v, 3)}` },
-        { label: 'Cost of Revenue', data: model.computed.cogs, fmt: v => `$${fmt(v, 3)}` },
-        { label: 'Operating Expense', data: model.computed.opex, fmt: v => `$${fmt(v, 3)}` },
-        { label: 'Operating Income (bil)', data: model.computed.opIncome, fmt: v => `$${fmt(v, 3)}`, bold: true },
-        { label: 'Operating Margin', data: model.computed.opMargin, fmt: v => fmtPct(v, 2) },
-        { label: 'Net Income (bil)', data: model.computed.netIncome, fmt: v => `$${fmt(v, 3)}`, bold: true },
+        { label: 'Revenue (bil)', data: model.computed.revenue, fmt: v => `$${fmt(v, 2)}`, bold: true },
+        { label: 'Cost of Revenue', data: model.computed.cogs, fmt: v => `$${fmt(v, 2)}` },
+        { label: 'Operating Expense', data: model.computed.opex, fmt: v => `$${fmt(v, 2)}` },
+        { label: 'Other Income, net', data: model.computed.nonOpIncome, fmt: v => `${Number(v) < 0 ? '-' : ''}$${fmt(Math.abs(v), 2)}` },
+        { sep: true },
+        { label: 'Operating Income (bil)', data: model.computed.opIncome, fmt: v => `$${fmt(v, 2)}`, bold: true },
+        { label: 'Operating Margin (%)', data: model.computed.opMargin, fmt: v => fmtPct(v, 2) },
+        { sep: true },
+        { label: 'Tax Expense', data: model.computed.taxExpense, fmt: v => `$${fmt(v, 2)}` },
+        { sep: true },
+        { label: 'Net Income (bil)', data: model.computed.netIncome, fmt: v => `$${fmt(v, 2)}`, bold: true },
         { label: 'Outstanding Shares (bil)', data: model.computed.shares, fmt: v => fmt(v, 4) },
-        { label: 'Earnings per Share', data: model.computed.eps, fmt: v => `$${fmt(v, 2)}`, bold: true },
-        { label: 'Share Price (at Tgt P/E)', data: model.computed.priceArr, fmt: v => `$${fmt(v, 2)}`, bold: true },
+        { sep: true },
+        { label: 'Earnings Per Share', data: model.computed.eps, fmt: v => `$${fmt(v, 2)}`, bold: true },
+        { sep: true },
+        { label: 'Share Price (Tgt P/E)', data: model.computed.priceArr, fmt: v => `$${fmt(v, 2)}`, bold: true },
+        { label: 'Extra Shares w/ Reinvested Div', data: model.computed.divShares, fmt: v => fmt(v, 4) },
       ];
 
-      const headerRow = new TableRow({
-        children: [
-          makeCell('', { bold: true, shading: COLORS.headerBg, width: 25 }),
-          ...yearLabels.map(y => makeCell(String(y), { bold: true, shading: COLORS.headerBg, align: AlignmentType.RIGHT })),
-        ],
-      });
+      // Build header row
+      const headerCells = [
+        cleanCell('Factors', { bold: true, width: labelWidth, borderTop: true, borderBottom: true }),
+        ...yearLabels.map(y => cleanCell(String(y), { bold: true, align: AlignmentType.RIGHT, width: yearWidth, borderTop: true, borderBottom: true })),
+      ];
 
-      const dataRows = projRows.map((row, ri) => new TableRow({
-        children: [
-          makeCell(row.label, { bold: row.bold, shading: ri % 2 ? COLORS.rowAlt : COLORS.white, width: 25 }),
-          ...(row.data || []).map(v => makeCell(row.fmt(v), {
-            align: AlignmentType.RIGHT,
-            bold: row.bold,
-            shading: ri % 2 ? COLORS.rowAlt : COLORS.white,
-          })),
-        ],
-      }));
+      const tableRows = [new TableRow({ children: headerCells })];
+
+      for (let ri = 0; ri < projRows.length; ri++) {
+        const row = projRows[ri];
+        if (row.sep) {
+          // Thin separator — apply top border to the NEXT non-sep row
+          continue;
+        }
+
+        // Check if previous row was a separator
+        const prevIsSep = ri > 0 && projRows[ri - 1]?.sep;
+
+        const cells = [
+          cleanCell(row.label, { bold: row.bold, width: labelWidth, borderTop: prevIsSep }),
+          ...(row.data || []).map(v => cleanCell(row.fmt(v), { align: AlignmentType.RIGHT, bold: row.bold, width: yearWidth, borderTop: prevIsSep })),
+        ];
+        tableRows.push(new TableRow({ children: cells }));
+      }
+
+      // ── Total CAGR footer row ──
+      const totalCAGRVal = model.computed.totalCAGR != null ? fmtPct(model.computed.totalCAGR, 2) : '—';
+      const cagrCells = [
+        cleanCell('Total CAGR', { bold: true, width: labelWidth, borderTop: true, borderBottom: true }),
+      ];
+      // Empty cells for all years except last
+      for (let i = 0; i < yearLabels.length - 1; i++) {
+        cagrCells.push(cleanCell('', { width: yearWidth, borderTop: true, borderBottom: true }));
+      }
+      cagrCells.push(cleanCell(totalCAGRVal, { bold: true, align: AlignmentType.RIGHT, width: yearWidth, borderTop: true, borderBottom: true }));
+      tableRows.push(new TableRow({ children: cagrCells }));
 
       sections.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: lightBorders(),
-        rows: [headerRow, ...dataRows],
+        rows: tableRows,
+      }));
+
+      // Caption
+      sections.push(new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 120, after: 80 },
+        children: [new TextRun({
+          text: `Table 1: ${ticker} 5-Year Valuation Forecast (revenue and income in billions).`,
+          font: FONT,
+          size: 18,
+          italics: true,
+          color: COLORS.mid,
+        })],
       }));
 
       sections.push(spacer(200));
 
-      // Output summary
-      sections.push(heading('Model Output', HeadingLevel.HEADING_2));
-      const outputs = [
-        ['Expected CAGR', fmtPct(model.computed.totalCAGRNoDivs, 2)],
-        ['Total CAGR (w/ Dividends)', fmtPct(model.computed.totalCAGR, 2)],
-        ['1-Year Price Target', `$${fmt(model.computed.priceTarget, 2)}`],
-        ['5-Year Target Price', `$${fmt(model.computed.targetPrice5, 2)}`],
-      ];
-
+      // ── Model Output Summary ──
       sections.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: lightBorders(),
-        rows: outputs.map((r, i) => new TableRow({
-          children: [
-            makeCell(r[0], { bold: true, shading: i % 2 ? COLORS.rowAlt : COLORS.white, width: 50 }),
-            makeCell(r[1], { bold: true, align: AlignmentType.RIGHT, shading: i % 2 ? COLORS.rowAlt : COLORS.white, color: COLORS.primary, size: 22, width: 50 }),
-          ],
-        })),
+        width: { size: 80, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: ['', 'Expected CAGR', 'CAGR w/ Dividends', '1Y Price Target', '5Y Target Price'].map(h =>
+              cleanCell(h, { bold: true, align: h ? AlignmentType.CENTER : AlignmentType.LEFT, borderTop: true, borderBottom: true, size: 17 })
+            ),
+          }),
+          new TableRow({
+            children: [
+              cleanCell('', { borderBottom: true }),
+              cleanCell(fmtPct(model.computed.totalCAGRNoDivs, 2), { align: AlignmentType.CENTER, bold: true, borderBottom: true }),
+              cleanCell(fmtPct(model.computed.totalCAGR, 2), { align: AlignmentType.CENTER, bold: true, borderBottom: true }),
+              cleanCell(`$${fmt(model.computed.priceTarget, 2)}`, { align: AlignmentType.CENTER, bold: true, borderBottom: true }),
+              cleanCell(`$${fmt(model.computed.targetPrice5, 2)}`, { align: AlignmentType.CENTER, bold: true, borderBottom: true }),
+            ],
+          }),
+        ],
       }));
     }
   }

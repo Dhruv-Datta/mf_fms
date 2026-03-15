@@ -119,7 +119,7 @@ export default function ResearchPage() {
   }, [activeResearchTab, cache]);
 
   const saveThesis = useCallback(async (data) => {
-    if (!selectedTicker) return;
+    if (!selectedTicker || (!thesisDirty && !data)) return;
     setThesisSaving(true);
     try {
       const res = await fetch(`/api/thesis/${selectedTicker}`, {
@@ -137,7 +137,7 @@ export default function ResearchPage() {
     } finally {
       setThesisSaving(false);
     }
-  }, [selectedTicker, thesis]);
+  }, [selectedTicker, thesis, thesisDirty]);
 
   const updateThesisField = (field, value) => {
     setThesis(prev => ({ ...prev, [field]: value }));
@@ -153,7 +153,7 @@ export default function ResearchPage() {
   };
 
   const addCoreReason = () => {
-    setThesis(prev => ({ ...prev, coreReasons: [...(prev.coreReasons || []), ''] }));
+    setThesis(prev => ({ ...prev, coreReasons: [...(prev.coreReasons || []), { title: '', description: '' }] }));
     setThesisDirty(true);
   };
 
@@ -189,10 +189,15 @@ export default function ResearchPage() {
     setThesisDirty(true);
   };
 
-  const updateCoreReason = (idx, value) => {
+  const updateCoreReason = (idx, field, value) => {
     setThesis(prev => ({
       ...prev,
-      coreReasons: prev.coreReasons.map((r, i) => i === idx ? value : r),
+      coreReasons: prev.coreReasons.map((r, i) => {
+        if (i !== idx) return r;
+        // Backward compat: if old format was a string, convert to object
+        const obj = typeof r === 'string' ? { title: r, description: '' } : r;
+        return { ...obj, [field]: value };
+      }),
     }));
     setThesisDirty(true);
   };
@@ -422,21 +427,6 @@ export default function ResearchPage() {
         </Card>
       ) : (
         <>
-          {/* Position Snapshot */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-            <StatCard label="Ticker" value={selectedTicker} />
-            <StatCard label="% of AUM" value={`${pctAum}%`} />
-            <StatCard
-              label="Unrealized Gain/Loss"
-              value={
-                quoteLoading ? null :
-                (holding && livePrice)
-                  ? `${((livePrice - holding.cost_basis) / holding.cost_basis * 100) >= 0 ? '+' : ''}${((livePrice - holding.cost_basis) / holding.cost_basis * 100).toFixed(2)}%`
-                  : '—'
-              }
-            />
-          </div>
-
           {/* Tab Switcher + Save */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex gap-1 bg-gray-100/80 rounded-2xl p-1 w-fit">
@@ -477,6 +467,21 @@ export default function ResearchPage() {
                 {thesisSaving ? 'Saving...' : thesisDirty ? 'Save Thesis' : 'Saved'}
               </button>
             )}
+          </div>
+
+          {/* Position Snapshot */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+            <StatCard label="Ticker" value={selectedTicker} />
+            <StatCard label="% of AUM" value={`${pctAum}%`} />
+            <StatCard
+              label="Unrealized Gain/Loss"
+              value={
+                quoteLoading ? null :
+                (holding && livePrice)
+                  ? `${((livePrice - holding.cost_basis) / holding.cost_basis * 100) >= 0 ? '+' : ''}${((livePrice - holding.cost_basis) / holding.cost_basis * 100).toFixed(2)}%`
+                  : '—'
+              }
+            />
           </div>
 
           {activeResearchTab === 'fundamentals' ? (
@@ -531,7 +536,7 @@ export default function ResearchPage() {
                 <div className="skeleton h-64 rounded-2xl" />
               </div>
             ) : thesis ? (
-              <div className="space-y-8">
+              <div className="space-y-8" onBlur={() => saveThesis()}>
                 {/* ── Preexisting Thesis ── */}
                 <Card>
                   <h2 className="text-lg font-bold text-gray-900 mb-1">Preexisting Thesis</h2>
@@ -549,39 +554,57 @@ export default function ResearchPage() {
                         Add Reason
                       </button>
                     </div>
-                    <div className="space-y-3">
-                      {(thesis.coreReasons || []).map((reason, idx) => (
-                        <div key={idx} className="flex gap-3 items-start group">
-                          <span className="flex-shrink-0 w-7 h-10 flex items-center justify-center text-xs font-bold text-gray-300 mt-px">{idx + 1}.</span>
-                          <input
-                            type="text"
-                            value={reason}
-                            onChange={e => updateCoreReason(idx, e.target.value)}
-                            placeholder={`Core reason #${idx + 1}...`}
-                            className="flex-1 bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300"
-                          />
-                          {(thesis.coreReasons || []).length > 1 && (
-                            <button
-                              onClick={() => removeCoreReason(idx)}
-                              className="flex-shrink-0 p-2.5 text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {(thesis.coreReasons || []).map((reason, idx) => {
+                        const r = typeof reason === 'string' ? { title: reason, description: '' } : reason;
+                        return (
+                          <div key={idx} className="group border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-all duration-200">
+                            <div className="flex gap-3 items-start">
+                              <span className="flex-shrink-0 w-7 h-10 flex items-center justify-center text-xs font-bold text-gray-300 mt-px">{idx + 1}.</span>
+                              <div className="flex-1 space-y-2">
+                                <input
+                                  type="text"
+                                  value={r.title}
+                                  onChange={e => updateCoreReason(idx, 'title', e.target.value)}
+                                  placeholder={`Core reason #${idx + 1}...`}
+                                  className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 placeholder:font-normal"
+                                />
+                                <textarea
+                                  value={r.description}
+                                  onChange={e => updateCoreReason(idx, 'description', e.target.value)}
+                                  onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                                  ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                                  placeholder="Elaborate on this reason..."
+                                  rows={2}
+                                  className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 resize-none overflow-hidden"
+                                />
+                              </div>
+                              {(thesis.coreReasons || []).length > 1 && (
+                                <button
+                                  onClick={() => removeCoreReason(idx)}
+                                  className="flex-shrink-0 p-2.5 text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Assumptions */}
                   <div className="mb-6">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-bold block mb-3">Key Assumptions</label>
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-bold block mb-3">The Story</label>
                     <textarea
                       value={thesis.assumptions || ''}
                       onChange={e => updateThesisField('assumptions', e.target.value)}
+                      onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                      ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
                       placeholder="What assumptions underpin your thesis? E.g., continued market share gains, margin expansion from scale, durable competitive moat..."
                       rows={4}
-                      className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 resize-none"
+                      className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 resize-none overflow-hidden"
                     />
                   </div>
 
@@ -669,9 +692,11 @@ export default function ResearchPage() {
                             <textarea
                               value={entry.body || ''}
                               onChange={e => updateNewsUpdate(activeIdx, 'body', e.target.value)}
+                              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                              ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
                               placeholder="Summarize the key takeaways..."
                               rows={3}
-                              className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 resize-none"
+                              className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 placeholder:text-gray-300 resize-none overflow-hidden"
                             />
                           </div>
 
@@ -680,9 +705,11 @@ export default function ResearchPage() {
                             <textarea
                               value={entry.impactOnAssumptions || ''}
                               onChange={e => updateNewsUpdate(activeIdx, 'impactOnAssumptions', e.target.value)}
+                              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                              ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
                               placeholder="Does this change your revenue growth, margin, or valuation assumptions? If so, how?"
                               rows={2}
-                              className="w-full bg-amber-50/50 border border-amber-200/60 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all duration-200 placeholder:text-amber-300 resize-none"
+                              className="w-full bg-amber-50/50 border border-amber-200/60 rounded-xl px-4 py-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all duration-200 placeholder:text-amber-300 resize-none overflow-hidden"
                             />
                           </div>
                         </div>
