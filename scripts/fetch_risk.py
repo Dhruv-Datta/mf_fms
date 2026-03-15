@@ -94,6 +94,24 @@ def fetch_risk(holdings, lookback_days=252):
 
     # Correlation matrix
     corr = returns_df[valid_tickers].corr()
+    asset_vols = returns_df[valid_tickers].std()
+
+    # Implied portfolio correlation, weighted by covariance contribution.
+    # This is a portfolio-level diversification statistic, not a simple
+    # arithmetic average of pairwise correlations.
+    portfolio_corr = None
+    cross_scale = 0.0
+    cross_corr = 0.0
+    for i in range(len(valid_tickers)):
+        for j in range(i + 1, len(valid_tickers)):
+            ti = valid_tickers[i]
+            tj = valid_tickers[j]
+            scale = weights.get(ti, 0) * weights.get(tj, 0) * asset_vols[ti] * asset_vols[tj]
+            cross_scale += scale
+            cross_corr += scale * corr.loc[ti, tj]
+    if cross_scale > 0:
+        portfolio_corr = float(cross_corr / cross_scale)
+
     corr_matrix = {
         "tickers": valid_tickers,
         "matrix": corr.values.tolist(),
@@ -106,6 +124,7 @@ def fetch_risk(holdings, lookback_days=252):
             "sharpe": round(sharpe, 2) if sharpe else None,
             "var95Pct": round(var_95_pct * 100, 2) if var_95_pct else None,
             "beta": round(beta, 2) if beta else None,
+            "portfolioCorrelation": round(portfolio_corr, 4) if portfolio_corr is not None else None,
             "daysUsed": len(port_returns),
         },
         "correlation": corr_matrix,

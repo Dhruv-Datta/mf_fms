@@ -612,25 +612,7 @@ export default function HoldingsPage() {
                   const top5Value = sortedPositions.slice(0, 5).reduce((s, p) => s + p.value, 0);
                   const top5Pct = totalAum > 0 ? (top5Value / totalAum) * 100 : 0;
                   const largestPct = totalAum > 0 && sortedPositions.length > 0 ? (sortedPositions[0].value / totalAum) * 100 : 0;
-                  // Weighted average correlation from risk data
-                  let weightedCorr = null;
-                  if (riskData?.correlation?.matrix && riskData.correlation.tickers?.length >= 2) {
-                    const corrTickers = riskData.correlation.tickers;
-                    const corrMatrix = riskData.correlation.matrix;
-                    const posMap = {};
-                    positions.forEach(p => { posMap[p.ticker] = totalAum > 0 ? p.value / totalAum : 0; });
-                    let sumWC = 0, sumW = 0;
-                    for (let i = 0; i < corrTickers.length; i++) {
-                      for (let j = i + 1; j < corrTickers.length; j++) {
-                        const wi = posMap[corrTickers[i]] || 0;
-                        const wj = posMap[corrTickers[j]] || 0;
-                        const pairWeight = wi * wj;
-                        sumWC += pairWeight * corrMatrix[i][j];
-                        sumW += pairWeight;
-                      }
-                    }
-                    if (sumW > 0) weightedCorr = sumWC / sumW;
-                  }
+                  const portfolioCorr = riskData?.metrics?.portfolioCorrelation ?? null;
 
                   // Sector performance (avg day change by sector)
                   const sectorPerf = {};
@@ -734,10 +716,10 @@ export default function HoldingsPage() {
                               <div className="text-[11px] text-gray-400 mt-0.5">Top 5 Weight</div>
                             </div>
                             <div className="bg-gray-50/80 rounded-xl p-3">
-                              <div className={`text-lg font-bold tabular-nums ${weightedCorr === null ? 'text-gray-400' : weightedCorr >= 0.5 ? 'text-red-500' : weightedCorr >= 0.3 ? 'text-amber-500' : 'text-emerald-600'}`}>
-                                {weightedCorr !== null ? weightedCorr.toFixed(2) : '—'}
+                              <div className={`text-lg font-bold tabular-nums ${portfolioCorr === null ? 'text-gray-400' : portfolioCorr >= 0.5 ? 'text-red-500' : portfolioCorr >= 0.3 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                                {portfolioCorr !== null ? portfolioCorr.toFixed(2) : '—'}
                               </div>
-                              <div className="text-[11px] text-gray-400 mt-0.5">Wtd Avg Corr</div>
+                              <div className="text-[11px] text-gray-400 mt-0.5">Portfolio Corr</div>
                             </div>
                           </div>
                         </Card>
