@@ -37,6 +37,21 @@ function bodyText(text, opts = {}) {
   });
 }
 
+function richContentToLines(value) {
+  if (!value) return [];
+  if (typeof value === 'string') {
+    return value.split('\n').map(line => line.trim()).filter(Boolean);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .filter(block => block?.type === 'text' && typeof block.value === 'string')
+      .flatMap(block => block.value.split('\n'))
+      .map(line => line.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 function spacer(size = 200) {
   return new Paragraph({ spacing: { before: size, after: 0 }, children: [] });
 }
@@ -357,9 +372,10 @@ export async function exportReport({ ticker, thesis, model, tickerData, liveQuot
     }
 
     // Key assumptions / The Story
-    if (thesis.assumptions && thesis.assumptions.trim()) {
+    const assumptionLines = richContentToLines(thesis.assumptions);
+    if (assumptionLines.length > 0) {
       sections.push(heading('The Story', HeadingLevel.HEADING_2));
-      thesis.assumptions.split('\n').filter(l => l.trim()).forEach(line => sections.push(bodyText(line)));
+      assumptionLines.forEach(line => sections.push(bodyText(line)));
       sections.push(spacer(100));
     }
 
