@@ -110,10 +110,10 @@ function DipFinder({ stocks, quotes }) {
       {
         data: items.map(i => i.pct),
         backgroundColor: items.map(i =>
-          i.pct >= 0 ? 'rgba(34, 197, 94, 0.75)' : 'rgba(239, 68, 68, 0.65)'
+          i.pct >= 0 ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.90)'
         ),
         hoverBackgroundColor: items.map(i =>
-          i.pct >= 0 ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.85)'
+          i.pct >= 0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)'
         ),
         borderRadius: 4,
         barPercentage: 0.7,
@@ -407,7 +407,7 @@ function StockCard({ stock, quote, onRemove, onMove, onUpdateNote, onUpdateResea
         <div className="flex gap-3 mt-3 text-[11px] text-gray-500">
           {quote.marketCap && <span>MCap {formatLargeNumber(quote.marketCap)}</span>}
           {quote.trailingPE && <span>PE {quote.trailingPE.toFixed(1)}</span>}
-          {quote.evToEbitda && <span>EV/EBITDA {quote.evToEbitda.toFixed(1)}</span>}
+          {quote.forwardPE && <span>Fwd PE {quote.forwardPE.toFixed(1)}</span>}
         </div>
       )}
 

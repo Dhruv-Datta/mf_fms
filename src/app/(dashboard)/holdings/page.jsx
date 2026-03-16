@@ -30,6 +30,12 @@ export default function HoldingsPage() {
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
   const [fundamentalsSearch, setFundamentalsSearch] = useState('');
 
+  // Factor config state
+  const [factorConfig, setFactorConfig] = useState(null);
+  const [editingFactorExposures, setEditingFactorExposures] = useState({});
+  const [newFactorName, setNewFactorName] = useState('');
+  const [editingWeights, setEditingWeights] = useState({});
+
   // Sector label overrides
   const [sectorConfig, setSectorConfig] = useState({});
   const [editingSector, setEditingSector] = useState(null);
@@ -143,6 +149,62 @@ export default function HoldingsPage() {
   useEffect(() => {
     fetch('/api/sector-labels').then(r => r.json()).then(setSectorConfig).catch(() => {});
   }, []);
+
+  // Load factor config
+  useEffect(() => {
+    fetch('/api/factor-config').then(r => r.json()).then(setFactorConfig).catch(() => {});
+  }, []);
+
+  const saveFactorConfig = async (updates) => {
+    try {
+      const res = await fetch('/api/factor-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      setFactorConfig(data);
+      return data;
+    } catch {
+      setToast({ message: 'Failed to save factor config', type: 'error' });
+    }
+  };
+
+  const saveExposure = async (ticker, factor, value) => {
+    const val = Math.max(0, Math.min(1, parseFloat(value) || 0));
+    const current = factorConfig?.exposures || {};
+    const tickerExposures = { ...(current[ticker] || {}), [factor]: val };
+    await saveFactorConfig({ exposures: { [ticker]: tickerExposures } });
+  };
+
+  const addFactor = async (name) => {
+    if (!name.trim()) return;
+    const factors = [...(factorConfig?.factors || []), name.trim()];
+    const iw = { ...(factorConfig?.importanceWeights || {}), [name.trim()]: 0.5 };
+    await saveFactorConfig({ factors, importanceWeights: iw });
+    setNewFactorName('');
+  };
+
+  const removeFactor = async (name) => {
+    const factors = (factorConfig?.factors || []).filter(f => f !== name);
+    const iw = { ...(factorConfig?.importanceWeights || {}) };
+    delete iw[name];
+    // Remove from all exposures
+    const exposures = { ...(factorConfig?.exposures || {}) };
+    for (const t of Object.keys(exposures)) {
+      if (exposures[t][name] !== undefined) {
+        exposures[t] = { ...exposures[t] };
+        delete exposures[t][name];
+      }
+    }
+    await saveFactorConfig({ factors, importanceWeights: iw, exposures });
+  };
+
+  const saveImportanceWeight = async (factor, value) => {
+    const val = Math.max(0, Math.min(1, parseFloat(value) || 0));
+    const iw = { ...(factorConfig?.importanceWeights || {}), [factor]: val };
+    await saveFactorConfig({ importanceWeights: iw });
+  };
 
   const getSectorLabel = (sector) => sectorConfig[sector]?.label || sector;
   const getSectorColor = (sector, fallback) => sectorConfig[sector]?.color || fallback;
@@ -464,8 +526,8 @@ export default function HoldingsPage() {
         <>
           {riskLoading ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton h-28 rounded-2xl" />)}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                {[1,2,3,4,5].map(i => <div key={i} className="skeleton h-28 rounded-2xl" />)}
               </div>
               <div className="skeleton h-72 rounded-3xl" />
             </div>
@@ -478,49 +540,80 @@ export default function HoldingsPage() {
             const ra = riskData.riskAttribution;
             const stocks = ra?.stocks || [];
             const summary = ra?.summary || {};
+            const factorProfile = riskData.portfolioFactorProfile || {};
+            const allFactors = riskData.allFactors || [];
+            const manualFactors = factorConfig?.factors || [];
+            const importanceWeights = factorConfig?.importanceWeights || {};
+            const overlap = riskData.overlap;
+
+            // Factor color map
+            const factorColors = { Volatility: '#6366f1', Regulatory: '#f59e0b', Disruption: '#ef4444', Valuation: '#06b6d4', 'Earnings Quality': '#10b981' };
+            const getFColor = (f) => factorColors[f] || '#94a3b8';
 
             return (
               <>
                 <p className="text-xs text-gray-400 mb-6 font-medium">
-                  Constant-weight basket · {m.daysUsed} trading days
-                  {summary.weightsNormalized && <span className="ml-2 text-amber-500">(weights normalized)</span>}
-                  {summary.psdAdjusted && <span className="ml-2 text-amber-500">(covariance matrix adjusted for PSD)</span>}
+                  Underwritten factor model · {m.daysUsed} trading days
                 </p>
 
-                {/* Portfolio Summary + Attribution Summary */}
+                {/* ── Top metric cards ── */}
                 {stocks.length > 0 && (
                   <>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                       <Card>
-                        <div className="text-2xl font-bold text-gray-900">{summary.portfolioVolatility}%</div>
+                        <div className="text-2xl font-bold text-gray-900">{m.observedVol != null ? `${m.observedVol}%` : '—'}</div>
                         <div className="text-xs text-gray-400 mt-1">Portfolio Volatility</div>
                       </Card>
                       <Card>
-                        <div className="text-2xl font-bold text-gray-900">{m.maxDrawdown != null ? `${m.maxDrawdown}%` : '—'}</div>
-                        <div className="text-xs text-gray-400 mt-1">Max Drawdown</div>
-                      </Card>
-                      <Card>
                         <div className="text-2xl font-bold text-gray-900">{m.var95Pct != null ? `${m.var95Pct}%` : '—'}</div>
-                        <div className="text-xs text-gray-400 mt-1">1 Day VaR (%)</div>
+                        <div className="text-xs text-gray-400 mt-1">95% VaR (Daily)</div>
                       </Card>
                       <Card>
                         <div className="text-2xl font-bold text-gray-900">{summary.top5RiskPct}%</div>
                         <div className="text-xs text-gray-400 mt-1">Top 5 Risk Contribution</div>
                       </Card>
+                      <Card>
+                        <div className="text-2xl font-bold text-gray-900 truncate">{summary.highestLoadFactor ?? '—'}</div>
+                        <div className="text-xs text-gray-400 mt-1">Highest Factor Load <span className="text-[10px] tabular-nums">({summary.highestLoadValue?.toFixed(3)})</span></div>
+                      </Card>
                     </div>
 
-                    {/* Charts: Bar + Correlation side by side */}
+                    {/* ── Portfolio Risk Profile ── */}
+                    <Card title="Portfolio Risk Profile" className="mb-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        {allFactors.map(f => {
+                          const val = factorProfile[f] ?? 0;
+                          const pct = Math.round(val * 100);
+                          return (
+                            <div key={f} className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[12px] font-semibold text-gray-600">{f}</span>
+                                <span className="text-[12px] font-bold text-gray-900 tabular-nums">{val.toFixed(2)}</span>
+                              </div>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: getFColor(f) }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+
+                    {/* ── Chart + Overlap side by side ── */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-stretch">
-                      {/* % Risk Contribution Bar Chart */}
-                      <Card title="Risk Contribution by Stock" className="flex flex-col">
+                      {/* Underwritten Risk Contribution by Stock */}
+                      <Card title="Composite Risk Contribution" className="flex flex-col">
                         <div className="flex-1" style={{ minHeight: Math.max(200, stocks.length * 32) }}>
                           <Bar
                             data={{
                               labels: stocks.map(s => s.ticker),
                               datasets: [
                                 {
-                                  label: '% Contrib to Vol',
-                                  data: stocks.map(s => s.pctOfTotalRisk),
+                                  label: '% Underwritten Risk',
+                                  data: stocks.map(s => s.pctOfRisk),
                                   backgroundColor: stocks.map(s =>
                                     s.riskLabel === 'over contributing' ? 'rgba(239,68,68,0.7)' :
                                     s.riskLabel === 'under contributing' ? 'rgba(16,185,129,0.7)' :
@@ -548,7 +641,27 @@ export default function HoldingsPage() {
                                   backgroundColor: 'rgba(255,255,255,0.95)',
                                   titleColor: '#111827', bodyColor: '#6b7280',
                                   borderColor: '#e5e7eb', borderWidth: 1, cornerRadius: 8, padding: 10,
-                                  callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(2)}%` },
+                                  callbacks: {
+                                    afterBody: (items) => {
+                                      const idx = items[0]?.dataIndex;
+                                      if (idx == null) return '';
+                                      const s = stocks[idx];
+                                      const lines = [
+                                        `Score: ${s.compositeScore?.toFixed(2) ?? '—'}`,
+                                        `Vol: ${s.standaloneVol}%`,
+                                        `Excess vs Wt: ${s.excessVsWeight >= 0 ? '+' : ''}${s.excessVsWeight?.toFixed(2)}%`,
+                                        '',
+                                      ];
+                                      if (s.factorContribs) {
+                                        lines.push('Factor breakdown:');
+                                        Object.entries(s.factorContribs).forEach(([f, v]) => {
+                                          if (v > 0.0001) lines.push(`  ${f}: ${v.toFixed(4)}`);
+                                        });
+                                      }
+                                      return lines;
+                                    },
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.x.toFixed(2)}%`,
+                                  },
                                 },
                               },
                               scales: {
@@ -566,19 +679,19 @@ export default function HoldingsPage() {
                         </div>
                       </Card>
 
-                      {/* Correlation Matrix */}
-                      {riskData.correlation && riskData.correlation.tickers?.length >= 2 && (
-                        <Card title="Correlation Matrix" className="flex flex-col">
+                      {/* Factor Profile Overlap (descriptive only) */}
+                      {overlap && overlap.tickers?.length >= 2 && (
+                        <Card title="Factor Profile Overlap" className="flex flex-col">
                           <div className="w-full flex-1 flex items-center">
-                            <div className="grid gap-[2px]" style={{ gridTemplateColumns: `40px repeat(${riskData.correlation.tickers.length}, 1fr)` }}>
+                            <div className="w-full grid gap-[2px]" style={{ gridTemplateColumns: `40px repeat(${overlap.tickers.length}, 1fr)` }}>
                               <div />
-                              {riskData.correlation.tickers.map(t => (
+                              {overlap.tickers.map(t => (
                                 <div key={`h-${t}`} className="text-center text-[10px] font-bold text-gray-700 py-1 truncate">{t}</div>
                               ))}
-                              {riskData.correlation.tickers.map((rowTicker, i) => (
+                              {overlap.tickers.map((rowTicker, i) => (
                                 <React.Fragment key={`row-${rowTicker}`}>
                                   <div className="text-[10px] font-bold text-gray-700 flex items-center justify-center truncate">{rowTicker}</div>
-                                  {riskData.correlation.matrix[i].map((val, j) => {
+                                  {overlap.matrix[i].map((val, j) => {
                                     const isDiag = i === j;
                                     const absVal = Math.abs(val);
                                     let bg;
@@ -595,45 +708,71 @@ export default function HoldingsPage() {
                               ))}
                             </div>
                           </div>
+                          <p className="text-[10px] text-gray-400 mt-2 text-center">Descriptive only — does not drive risk contribution</p>
                         </Card>
                       )}
                     </div>
 
-                    {/* Risk Attribution Table */}
+                    {/* ── Stock-Level Risk Attribution Table ── */}
                     <Card title="Stock-Level Risk Attribution" className="mb-6">
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-gray-100">
-                              {['Ticker', 'Weight', 'Vol (Ann.)', 'Cov w/ Port', 'Marginal', 'Risk Contribution', '% Contrib to Vol', 'Status'].map(col => (
+                              {['Ticker', 'Weight', 'Realized Vol', '% of Risk', 'Score', 'Status'].map(col => (
                                 <th key={col} className="text-right py-3 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider first:text-left">{col}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             {stocks.map(s => (
-                              <tr key={s.ticker} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                                <td className="py-3 px-2 font-bold text-gray-900">{s.ticker}</td>
-                                <td className="text-right py-3 px-2 text-gray-600 tabular-nums">{s.weight.toFixed(2)}%</td>
-                                <td className="text-right py-3 px-2 text-gray-600 tabular-nums">{s.standaloneVol.toFixed(2)}%</td>
-                                <td className="text-right py-3 px-2 text-gray-600 tabular-nums">{s.covWithPortfolio.toFixed(2)}%</td>
-                                <td className="text-right py-3 px-2 text-gray-600 tabular-nums">{s.marginalContrib.toFixed(2)}%</td>
-                                <td className="text-right py-3 px-2 text-gray-600 tabular-nums">{s.totalContrib.toFixed(2)}%</td>
-                                <td className={`text-right py-3 px-2 font-semibold tabular-nums ${
-                                  s.riskLabel === 'over contributing' ? 'text-red-600' :
-                                  s.riskLabel === 'under contributing' ? 'text-emerald-600' :
-                                  'text-blue-600'
-                                }`}>{s.pctOfTotalRisk.toFixed(2)}%</td>
-                                <td className="text-right py-3 px-2">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                    s.riskLabel === 'over contributing' ? 'bg-red-50 text-red-600' :
-                                    s.riskLabel === 'under contributing' ? 'bg-emerald-50 text-emerald-600' :
-                                    'bg-blue-50 text-blue-600'
-                                  }`}>
-                                    {s.riskLabel}
-                                  </span>
-                                </td>
-                              </tr>
+                              <React.Fragment key={s.ticker}>
+                                <tr className="hover:bg-gray-50/50 transition-colors">
+                                  <td className="pt-3 pb-1 px-2 font-bold text-gray-900">{s.ticker}</td>
+                                  <td className="text-right pt-3 pb-1 px-2 text-gray-600 tabular-nums">{s.weight.toFixed(2)}%</td>
+                                  <td className="text-right pt-3 pb-1 px-2 text-gray-600 tabular-nums">{s.standaloneVol.toFixed(2)}%</td>
+                                  <td className={`text-right pt-3 pb-1 px-2 font-semibold tabular-nums ${
+                                    s.riskLabel === 'over contributing' ? 'text-red-600' :
+                                    s.riskLabel === 'under contributing' ? 'text-emerald-600' :
+                                    'text-blue-600'
+                                  }`}>{s.pctOfRisk.toFixed(2)}%</td>
+                                  <td className="text-right pt-3 pb-1 px-2 text-gray-600 tabular-nums">{s.compositeScore?.toFixed(2) ?? '—'}</td>
+                                  <td className="text-right pt-3 pb-1 px-2">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                      s.riskLabel === 'over contributing' ? 'bg-red-50 text-red-600' :
+                                      s.riskLabel === 'under contributing' ? 'bg-emerald-50 text-emerald-600' :
+                                      'bg-blue-50 text-blue-600'
+                                    }`}>
+                                      {s.riskLabel}
+                                    </span>
+                                  </td>
+                                </tr>
+                                {/* Factor stacking row */}
+                                {s.factorExposures && (() => {
+                                  // piece_ik = a_k * x_ik, same basis as Score numerator
+                                  const pieces = allFactors.map(f => (importanceWeights[f] ?? 0.5) * (s.factorExposures[f] ?? 0));
+                                  const total = pieces.reduce((a, b) => a + b, 0);
+                                  if (total < 1e-8) return null;
+                                  return (
+                                    <tr className="border-b border-gray-100">
+                                      <td colSpan={6} className="pt-0.5 pb-2.5 px-2">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          {allFactors.map((f, k) => {
+                                            const chipPct = (pieces[k] / total) * 100;
+                                            if (chipPct < 0.5) return null;
+                                            return (
+                                              <span key={f} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-600 border border-gray-100">
+                                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getFColor(f) }} />
+                                                {f} <span className="text-gray-400 tabular-nums">{Math.round(chipPct)}%</span>
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })()}
+                              </React.Fragment>
                             ))}
                           </tbody>
                           <tfoot>
@@ -641,14 +780,112 @@ export default function HoldingsPage() {
                               <td className="py-3 px-2">Total</td>
                               <td className="text-right py-3 px-2 tabular-nums">100.00%</td>
                               <td className="text-right py-3 px-2" />
+                              <td className="text-right py-3 px-2 tabular-nums">100.00%</td>
                               <td className="text-right py-3 px-2" />
-                              <td className="text-right py-3 px-2" />
-                              <td className="text-right py-3 px-2 tabular-nums">{summary.sumTotalContrib?.toFixed(2)}%</td>
-                              <td className="text-right py-3 px-2 tabular-nums">{summary.sumPctContrib?.toFixed(2)}%</td>
                               <td />
                             </tr>
                           </tfoot>
                         </table>
+                      </div>
+                    </Card>
+
+                    {/* ── Factor Model Configuration ── */}
+                    <Card title="Factor Model Configuration" className="mb-6">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Factors & Importance Weights</h3>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3 bg-gray-50/80 rounded-xl px-3 py-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: '#6366f1' }} />
+                              <span className="text-sm font-semibold text-gray-700 flex-1">Volatility <span className="text-[10px] text-indigo-500 font-medium ml-1">auto</span></span>
+                              <input
+                                type="number" step="0.1" min="0" max="1"
+                                className="w-16 text-sm text-center bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-emerald-400 tabular-nums"
+                                value={editingWeights['Volatility'] ?? importanceWeights['Volatility'] ?? 0.9}
+                                onChange={e => setEditingWeights(p => ({ ...p, Volatility: e.target.value }))}
+                                onBlur={e => { saveImportanceWeight('Volatility', e.target.value); setEditingWeights(p => { const n = { ...p }; delete n['Volatility']; return n; }); }}
+                              />
+                            </div>
+                            {manualFactors.map(f => (
+                              <div key={f} className="flex items-center gap-3 bg-gray-50/80 rounded-xl px-3 py-2">
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getFColor(f) }} />
+                                <span className="text-sm font-semibold text-gray-700 flex-1">{f}</span>
+                                <input
+                                  type="number" step="0.1" min="0" max="1"
+                                  className="w-16 text-sm text-center bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-emerald-400 tabular-nums"
+                                  value={editingWeights[f] ?? importanceWeights[f] ?? 0.5}
+                                  onChange={e => setEditingWeights(p => ({ ...p, [f]: e.target.value }))}
+                                  onBlur={e => { saveImportanceWeight(f, e.target.value); setEditingWeights(p => { const n = { ...p }; delete n[f]; return n; }); }}
+                                />
+                                <button onClick={() => removeFactor(f)} className="text-gray-300 hover:text-red-500 transition-colors p-1" title="Remove factor">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <form className="flex items-center gap-2 mt-3" onSubmit={e => { e.preventDefault(); addFactor(newFactorName); }}>
+                            <input
+                              type="text" value={newFactorName} onChange={e => setNewFactorName(e.target.value)}
+                              placeholder="Add new factor..."
+                              className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-400"
+                            />
+                            <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-3 py-2 rounded-xl transition-colors">
+                              <Plus size={14} />
+                            </button>
+                          </form>
+                        </div>
+
+                        {manualFactors.length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Stock Factor Exposures (0–1)</h3>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-gray-100">
+                                    <th className="text-left py-2 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Ticker</th>
+                                    {manualFactors.map(f => (
+                                      <th key={f} className="text-center py-2 px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{f}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {stocks.map(s => (
+                                    <tr key={s.ticker} className="border-b border-gray-50">
+                                      <td className="py-2 px-2 font-bold text-gray-900">{s.ticker}</td>
+                                      {manualFactors.map(f => {
+                                        const key = `${s.ticker}_${f}`;
+                                        const currentVal = factorConfig?.exposures?.[s.ticker]?.[f] ?? 0;
+                                        return (
+                                          <td key={f} className="text-center py-2 px-2">
+                                            <input
+                                              type="number" step="0.05" min="0" max="1"
+                                              className="w-16 text-sm text-center bg-gray-50 border border-gray-200 rounded-lg px-1 py-1 outline-none focus:ring-1 focus:ring-emerald-400 tabular-nums"
+                                              value={editingFactorExposures[key] ?? currentVal}
+                                              onChange={e => setEditingFactorExposures(p => ({ ...p, [key]: e.target.value }))}
+                                              onBlur={e => {
+                                                saveExposure(s.ticker, f, e.target.value);
+                                                setEditingFactorExposures(p => { const n = { ...p }; delete n[key]; return n; });
+                                              }}
+                                            />
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end pt-2">
+                          <button
+                            onClick={() => { setRiskData(null); loadRisk(portfolio.holdings); }}
+                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+                          >
+                            <RefreshCw size={14} /> Recalculate Risk
+                          </button>
+                        </div>
                       </div>
                     </Card>
                   </>
@@ -902,13 +1139,14 @@ export default function HoldingsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-100">
-                        {['Symbol', 'Sector', 'Industry', 'Mkt Value', 'Mkt Cap', 'P/E', 'Fwd P/E', 'PEG', 'P/B', 'P/S', 'EV/EBITDA', 'EV/REV', 'Beta'].map(col => (
+                        {['Symbol', 'Sector', 'Industry', 'Mkt Value', 'Mkt Cap', 'P/E', 'Fwd P/E', 'P/B', 'P/S', 'EV/EBITDA', 'EV/REV', 'Beta'].map(col => (
                           <th key={col} className="text-right py-3 px-2 text-[0.65rem] text-gray-400 uppercase tracking-wider font-semibold first:text-left whitespace-nowrap">{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {positions
+                      {[...positions]
+                        .sort((a, b) => b.value - a.value)
                         .filter(p => {
                           if (!fundamentalsSearch) return true;
                           const q = fundamentalsSearch.toLowerCase();
@@ -928,12 +1166,11 @@ export default function HoldingsPage() {
                             <tr key={p.ticker} className="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors duration-150">
                               <td className="py-3 px-2"><span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2 py-0.5 rounded-lg">{p.ticker}</span></td>
                               <td className="text-right py-3 px-2 text-gray-500 text-xs">{f.sector ? getSectorLabel(f.sector) : '—'}</td>
-                              <td className="text-right py-3 px-2 text-gray-500 text-xs max-w-[120px] truncate">{f.industry || '—'}</td>
+                              <td className="text-right py-3 px-2 text-gray-500 text-xs whitespace-nowrap">{f.industry || '—'}</td>
                               <td className="text-right py-3 px-2 text-gray-900 font-medium">{formatMoney(p.value)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.marketCap)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.pe)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.forwardPe)}</td>
-                              <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.peg)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.pb)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.ps)}</td>
                               <td className="text-right py-3 px-2 text-gray-700">{fmtVal(f.evEbitda)}</td>

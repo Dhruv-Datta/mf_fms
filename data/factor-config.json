@@ -1,0 +1,89 @@
+{
+  "factors": [
+    "Regulatory",
+    "Disruption",
+    "Valuation",
+    "Earnings Quality"
+  ],
+  "importanceWeights": {
+    "Volatility": 0.9,
+    "Regulatory": 0.3,
+    "Disruption": 0.5,
+    "Valuation": 0.6,
+    "Earnings Quality": 0.8
+  },
+  "exposures": {
+    "GOOGL": {
+      "Regulatory": 0.2,
+      "Disruption": 0.4,
+      "Valuation": 0.2,
+      "Earnings Quality": 0.1
+    },
+    "AMZN": {
+      "Regulatory": 0.1,
+      "Disruption": 0.25,
+      "Valuation": 0.35,
+      "Earnings Quality": 0.15
+    },
+    "UNH": {
+      "Regulatory": 0.6,
+      "Disruption": 0.4,
+      "Valuation": 0.15,
+      "Earnings Quality": 0.5
+    },
+    "HLT": {
+      "Regulatory": 0.1,
+      "Disruption": 0.3,
+      "Valuation": 0.45,
+      "Earnings Quality": 0.25
+    },
+    "ASML": {
+      "Regulatory": 0.15,
+      "Disruption": 0.1,
+      "Valuation": 0.25,
+      "Earnings Quality": 0.2
+    },
+    "MA": {
+      "Regulatory": 0.5,
+      "Disruption": 0.3,
+      "Valuation": 0.3,
+      "Earnings Quality": 0.1
+    },
+    "AAAU": {
+      "Regulatory": 0.01,
+      "Disruption": 0.01,
+      "Valuation": 0.5,
+      "Earnings Quality": 0.01
+    },
+    "UBER": {
+      "Regulatory": 0.2,
+      "Disruption": 0.5,
+      "Valuation": 0.45,
+      "Earnings Quality": 0.3
+    },
+    "BKNG": {
+      "Regulatory": 0.1,
+      "Disruption": 0.3,
+      "Valuation": 0.35,
+      "Earnings Quality": 0.25
+    },
+    "ADBE": {
+      "Regulatory": 0.1,
+      "Disruption": 0.65,
+      "Valuation": 0.3,
+      "Earnings Quality": 0.2
+    },
+    "NFLX": {
+      "Regulatory": 0.15,
+      "Disruption": 0.25,
+      "Valuation": 0.5,
+      "Earnings Quality": 0.2
+    },
+    "META": {
+      "Regulatory": 0.25,
+      "Disruption": 0.25,
+      "Valuation": 0.35,
+      "Earnings Quality": 0.2
+    }
+  }
+}

@@ -44,6 +44,7 @@ def fetch_quotes(tickers):
             avg_volume = _safe_float(full_info.get('averageVolume'))
             dividend_yield = _safe_float(full_info.get('dividendYield'))
             trailing_pe = _safe_float(full_info.get('trailingPE'))
+            forward_pe = _safe_float(full_info.get('forwardPE'))
             revenue_growth = _safe_float(full_info.get('revenueGrowth'))
             earnings_growth = _safe_float(full_info.get('earningsGrowth'))
             roic = _safe_float(full_info.get('returnOnCapital')) or _safe_float(full_info.get('returnOnEquity'))
@@ -63,6 +64,7 @@ def fetch_quotes(tickers):
                 "avgVolume": avg_volume,
                 "dividendYield": dividend_yield,
                 "trailingPE": trailing_pe,
+                "forwardPE": forward_pe,
                 "revenueGrowth": revenue_growth,
                 "earningsGrowth": earnings_growth,
                 "roic": roic,
