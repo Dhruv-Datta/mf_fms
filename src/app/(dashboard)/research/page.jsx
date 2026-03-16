@@ -1002,12 +1002,6 @@ export default function ResearchPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-            <StatCard label="Ticker" value={selectedTicker} />
-            <StatCard label="Watchlist" value={selectedStock?.watchlistName || '—'} />
-            <StatCard label="Stage" value="Research" />
-          </div>
-
           {activeResearchTab === 'fundamentals' ? (
             <>
               <Card className="mb-8">

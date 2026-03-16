@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Trash2, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import Card from '@/components/Card';
 import StatCard from '@/components/StatCard';
@@ -15,13 +16,17 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 
 export default function HoldingsPage() {
   const cache = useCache();
+  const searchParams = useSearchParams();
   const [portfolio, setPortfolio] = useState(() => cache.get('holdings_portfolio') || null);
   const [quotes, setQuotes] = useState(() => cache.get('holdings_quotes') || {});
   const [loading, setLoading] = useState(() => !cache.get('holdings_portfolio'));
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [treemapMode, setTreemapMode] = useState('alltime');
-  const [activeSubTab, setActiveSubTab] = useState('summary');
+  const initialTab = searchParams.get('tab');
+  const [activeSubTab, setActiveSubTab] = useState(
+    initialTab && ['summary', 'risk', 'factors'].includes(initialTab) ? initialTab : 'summary'
+  );
 
   // Risk & Factors state
   const [riskData, setRiskData] = useState(null);
@@ -131,6 +136,14 @@ export default function HoldingsPage() {
       }
     });
   }, [loadPortfolio, loadQuotes, cache]);
+
+  // Sync tab from URL when search params change
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['summary', 'risk', 'factors'].includes(tab)) {
+      setActiveSubTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeSubTab === 'risk' && !riskData && !riskLoading && portfolio?.holdings?.length) {
