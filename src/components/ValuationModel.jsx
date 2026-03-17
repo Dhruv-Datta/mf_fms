@@ -33,23 +33,50 @@ function fmtPct(v, decimals = 1) {
   return (v * 100).toFixed(decimals) + '%';
 }
 
+function formatEditableNumber(value, decimals = 6) {
+  if (value === '' || value === undefined || value === null) return '';
+  const num = Number(value);
+  if (!Number.isFinite(num)) return typeof value === 'string' ? value : '';
+  return num.toFixed(decimals).replace(/\.?0+$/, '');
+}
+
 function InputCell({ value, onChange, onBlur, pct = false, dollar = false, suffix = '', placeholder, className = '' }) {
-  const displayValue = pct && value !== '' && value !== undefined ? (Number(value) * 100) : value;
+  const formattedValue = pct && value !== '' && value !== undefined
+    ? formatEditableNumber(Number(value) * 100)
+    : formatEditableNumber(value);
+  const [draftValue, setDraftValue] = useState(formattedValue);
+
+  useEffect(() => {
+    setDraftValue(formattedValue);
+  }, [formattedValue]);
+
   const hasSuffix = pct || suffix;
   return (
     <div className="relative flex items-center">
       {dollar && <span className="absolute left-2.5 text-[11px] font-medium text-gray-400 pointer-events-none">$</span>}
       <input
-        type="number"
-        step={pct ? '0.1' : 'any'}
-        value={displayValue ?? ''}
+        type="text"
+        inputMode="decimal"
+        value={draftValue ?? ''}
         onChange={e => {
           const raw = e.target.value;
-          if (raw === '' || raw === '-') { onChange(raw === '-' ? '-' : ''); return; }
+          if (!/^-?\d*\.?\d*$/.test(raw)) return;
+          setDraftValue(raw);
+          if (raw === '' || raw === '-' || raw === '.' || raw === '-.') {
+            onChange(raw === '-' ? '-' : '');
+            return;
+          }
+          if (raw.endsWith('.')) {
+            onChange(pct ? Number(raw.slice(0, -1)) / 100 : Number(raw.slice(0, -1)));
+            return;
+          }
           onChange(pct ? Number(raw) / 100 : Number(raw));
         }}
         placeholder={placeholder}
-        onBlur={onBlur}
+        onBlur={() => {
+          setDraftValue(formattedValue);
+          onBlur?.();
+        }}
         className={`w-full bg-sky-50/80 border border-sky-200/60 rounded py-1.5 text-[13px] font-medium text-gray-900 outline-none focus:ring-1.5 focus:ring-sky-400 focus:border-sky-400 focus:bg-sky-50 transition-all text-right tabular-nums placeholder:text-gray-300 ${dollar ? 'pl-6' : 'pl-2.5'} ${hasSuffix ? 'pr-6' : 'pr-2.5'} ${className}`}
       />
       {pct && <span className="absolute right-2.5 text-[11px] font-medium text-gray-400 pointer-events-none">%</span>}
