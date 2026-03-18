@@ -16,8 +16,6 @@ const NAV_GROUPS = [
     icon: Briefcase,
     items: [
       { href: '/holdings', label: 'Holdings', icon: Briefcase },
-      { href: '/holdings?tab=risk', label: 'Risk', icon: Shield },
-      { href: '/holdings?tab=factors', label: 'Factors', icon: BarChart3 },
       { href: '/allocation', label: 'Allocation', icon: PieChart },
       { href: '/tasks', label: 'Task Board', icon: ClipboardList },
     ],
@@ -64,7 +62,7 @@ function NavDropdown({ group, pathname, searchParams }) {
   };
 
   const handleLeave = () => {
-    timeoutRef.current = setTimeout(() => setOpen(false), 150);
+    timeoutRef.current = setTimeout(() => setOpen(false), 50);
   };
 
   useEffect(() => {

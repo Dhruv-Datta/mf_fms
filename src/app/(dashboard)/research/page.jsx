@@ -928,7 +928,6 @@ export default function ResearchPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Research</h1>
-          <p className="text-gray-500 mt-1">Deep-dive workspace for names promoted beyond the watchlist stage</p>
         </div>
         {dataExists && (
           <button

@@ -372,12 +372,8 @@ export default function HoldingsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {activeSubTab === 'risk' ? 'Risk' : activeSubTab === 'factors' ? 'Factors' : 'Our Holdings'}
-          </h1>
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Our Holdings</h1>
         <button
           onClick={refreshAll}
           className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-white border border-gray-200 rounded-2xl text-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-md transition-all duration-200"
@@ -385,6 +381,27 @@ export default function HoldingsPage() {
           <RefreshCw size={14} className={quotesLoading ? 'animate-spin' : ''} />
           Refresh
         </button>
+      </div>
+
+      {/* Tab Bar */}
+      <div className="flex items-center gap-1 mb-8 bg-gray-100/80 rounded-xl p-1 w-fit">
+        {[
+          { key: 'summary', label: 'Summary' },
+          { key: 'risk', label: 'Risk' },
+          { key: 'factors', label: 'Factors' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveSubTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+              activeSubTab === tab.key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* ===== SUMMARY TAB ===== */}
@@ -512,6 +529,30 @@ export default function HoldingsPage() {
                         </tr>
                       );
                     })}
+                    {/* Cash Row */}
+                    <tr className="border-t-2 border-gray-200 bg-gray-50/50">
+                      <td className="py-3.5 px-3">
+                        <span className="bg-gray-200 text-gray-600 font-bold text-xs px-2.5 py-1 rounded-lg">CASH</span>
+                      </td>
+                      <td className="text-right py-3.5 px-3 text-gray-500">{totalAum > 0 ? ((parseFloat(cash) || 0) / totalAum * 100).toFixed(1) : '0.0'}%</td>
+                      <td className="text-right py-3.5 px-3 text-gray-900 font-semibold">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-gray-400 text-xs">$</span>
+                          <input
+                            type="number" value={cash} onChange={e => setCash(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && saveCash()} onBlur={saveCash}
+                            placeholder="0.00" step="0.01" min="0"
+                            className="w-28 bg-transparent text-right text-sm text-gray-900 font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500 rounded-lg px-2 py-0.5 transition-all duration-200"
+                          />
+                        </div>
+                      </td>
+                      <td className="text-right py-3.5 px-3 text-gray-400">—</td>
+                      <td className="text-right py-3.5 px-3 text-gray-400">—</td>
+                      <td className="text-right py-3.5 px-3 text-gray-400">—</td>
+                      <td className="text-right py-3.5 px-3 text-gray-400">—</td>
+                      <td className="text-right py-3.5 px-3 text-gray-400">—</td>
+                      <td className="text-right py-3.5 px-3"></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -538,18 +579,6 @@ export default function HoldingsPage() {
                 Add
               </button>
             </form>
-
-            <div className="flex items-center gap-3 mt-5 pt-5 border-t border-gray-100">
-              <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Cash</span>
-              <span className="text-gray-400">$</span>
-              <input
-                type="number" value={cash} onChange={e => setCash(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveCash()} onBlur={saveCash}
-                placeholder="0.00" step="0.01" min="0"
-                className="w-36 bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
-              />
-              <span className="text-xs text-gray-400">Press Enter to save</span>
-            </div>
           </Card>
         </>
       )}

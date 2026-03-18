@@ -732,8 +732,9 @@ function StockCard({ stock, quote, onRemove, onMove, onUpdateNote, onUpdateResea
         <textarea
           defaultValue={stock.note || ''}
           placeholder="Quick note on why this stock is interesting..."
-          className="mt-1 w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
+          className="mt-1 w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 resize-none overflow-hidden focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-300 transition-all"
           rows={2}
+          ref={(el) => { if (el) autoExpand(el); }}
           onInput={(e) => autoExpand(e.target)}
           onBlur={(e) => onUpdateNote(stock.ticker, e.target.value)}
         />
@@ -997,7 +998,11 @@ export default function WatchlistPage() {
   const [tickerInput, setTickerInput] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const watchlists = allData?.watchlists || [];
+  const watchlists = (allData?.watchlists || []).toSorted((a, b) => {
+    const aMain = a.name?.toLowerCase().includes('b.d. sterling') || a.name?.toLowerCase().includes('bd sterling') ? 0 : 1;
+    const bMain = b.name?.toLowerCase().includes('b.d. sterling') || b.name?.toLowerCase().includes('bd sterling') ? 0 : 1;
+    return aMain - bMain;
+  });
   const activeId = allData?.activeWatchlistId || 'default';
   const activeWatchlist = watchlists.find(w => w.id === activeId);
   const stocks = activeWatchlist?.stocks || [];

@@ -1,43 +1,44 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, X, Check, ChevronDown, ChevronRight, User } from 'lucide-react';
+import { Plus, X, Check, ChevronDown, ChevronRight, User, Pencil } from 'lucide-react';
 
 const PRIORITY_SECTIONS = [
-  { key: 'highest', label: 'HIGHEST PRIORITY', color: 'bg-emerald-500', maxTasks: 3 },
-  { key: 'medium',  label: 'MEDIUM PRIORITY',  color: 'bg-blue-500',    maxTasks: 5 },
-  { key: 'low',     label: 'LOW PRIORITY',      color: 'bg-gray-400',    maxTasks: null },
+  { key: 'highest', label: 'HIGH PRIORITY',   color: 'bg-red-500',     maxTasks: 3 },
+  { key: 'medium',  label: 'MEDIUM PRIORITY', color: 'bg-yellow-400',  maxTasks: 5 },
+  { key: 'low',     label: 'LOW PRIORITY',    color: 'bg-emerald-500', maxTasks: null },
 ];
 
 const ASSIGNEE_PRESETS = ['Dhruv', 'Bhuvan', 'Both'];
 
 const ASSIGNEE_COLORS = {
-  dhruv:  'bg-violet-100 text-violet-700 border-violet-200',
-  bhuvan: 'bg-amber-100 text-amber-700 border-amber-200',
-  both:   'bg-blue-100 text-blue-700 border-blue-200',
+  dhruv:  'bg-[#4F46E5] text-white border-[#4F46E5]',
+  bhuvan: 'bg-[#16A34A] text-white border-[#16A34A]',
+  both:   'bg-[#6B7280] text-white border-[#6B7280]',
 };
 
 function getAssigneeStyle(assignee) {
   if (!assignee) return '';
-  return ASSIGNEE_COLORS[assignee.toLowerCase()] || 'bg-gray-100 text-gray-600 border-gray-200';
+  return ASSIGNEE_COLORS[assignee.toLowerCase()] || 'bg-gray-500 text-white border-gray-500';
 }
 
-function AssigneeTag({ assignee, onClick }) {
+function AssigneeTag({ assignee, onClick, size = 'normal' }) {
   if (!assignee) {
     return (
       <button
         onClick={onClick}
-        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-gray-600 transition-all duration-200"
+        className={`opacity-0 group-hover:opacity-100 group-hover/sub:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 transition-all duration-200`}
         title="Assign"
       >
-        <User size={14} />
+        <User size={size === 'small' ? 12 : 14} />
       </button>
     );
   }
+  const sizeClasses = size === 'small' ? 'text-[10px] px-1.5 py-0' : 'text-xs px-2 py-0.5';
   return (
     <button
       onClick={onClick}
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border transition-colors hover:opacity-80 ${getAssigneeStyle(assignee)}`}
+      className={`font-medium rounded-full border transition-colors hover:opacity-80 ${sizeClasses} ${getAssigneeStyle(assignee)}`}
     >
       {assignee}
     </button>
@@ -108,8 +109,11 @@ export default function TaskBoardPage() {
   const [expandedTasks, setExpandedTasks] = useState(new Set());
   const [addingSubtask, setAddingSubtask] = useState(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-  const [assigneePickerOpen, setAssigneePickerOpen] = useState(null);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(null);     // 'task-{id}' or 'sub-{taskId}-{subId}'
+  const [editingSubId, setEditingSubId] = useState(null);                 // '{taskId}-{subId}'
+  const [editingSubTitle, setEditingSubTitle] = useState('');
   const editRef = useRef(null);
+  const subEditRef = useRef(null);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -131,6 +135,13 @@ export default function TaskBoardPage() {
       editRef.current.select();
     }
   }, [editingId]);
+
+  useEffect(() => {
+    if (editingSubId && subEditRef.current) {
+      subEditRef.current.focus();
+      subEditRef.current.select();
+    }
+  }, [editingSubId]);
 
   const tasksByPriority = (key) => tasks.filter(t => t.priority === key);
   const totalOpen = tasks.filter(t => !t.done).length;
@@ -268,7 +279,7 @@ export default function TaskBoardPage() {
   const addSubtask = (taskId, { keepOpen = false } = {}) => {
     if (!newSubtaskTitle.trim()) return;
     const task = tasks.find(t => t.id === taskId);
-    const subtasks = [...(task.subtasks || []), { id: Date.now(), title: newSubtaskTitle.trim(), done: false }];
+    const subtasks = [...(task.subtasks || []), { id: Date.now(), title: newSubtaskTitle.trim(), done: false, assignee: '' }];
     updateSubtasks(taskId, subtasks);
     setNewSubtaskTitle('');
     if (!keepOpen) setAddingSubtask(null);
@@ -283,6 +294,28 @@ export default function TaskBoardPage() {
   const removeSubtask = (taskId, subtaskId) => {
     const task = tasks.find(t => t.id === taskId);
     const subtasks = (task.subtasks || []).filter(s => s.id !== subtaskId);
+    updateSubtasks(taskId, subtasks);
+  };
+
+  const startEditingSubtask = (taskId, sub) => {
+    setEditingSubId(`${taskId}-${sub.id}`);
+    setEditingSubTitle(sub.title);
+  };
+
+  const saveSubtaskEdit = (taskId, subtaskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) { setEditingSubId(null); return; }
+    const newTitle = editingSubTitle.trim();
+    if (!newTitle) { setEditingSubId(null); return; }
+    const subtasks = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, title: newTitle } : s);
+    setEditingSubId(null);
+    updateSubtasks(taskId, subtasks);
+  };
+
+  const updateSubtaskAssignee = (taskId, subtaskId, assignee) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const subtasks = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, assignee } : s);
     updateSubtasks(taskId, subtasks);
   };
 
@@ -356,6 +389,11 @@ export default function TaskBoardPage() {
                                 ? 'bg-white border-emerald-200 shadow-sm'
                                 : 'bg-gray-50/70 border-gray-100 hover:border-gray-200 group'
                             }`}
+                            onBlur={(e) => {
+                              if (isEditing && !e.currentTarget.contains(e.relatedTarget)) {
+                                saveEdit(task.id);
+                              }
+                            }}
                           >
                             <div className="flex items-center gap-3 px-4 py-3">
                               {/* Expand toggle */}
@@ -417,10 +455,11 @@ export default function TaskBoardPage() {
                                   assignee={task.assignee}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setAssigneePickerOpen(assigneePickerOpen === task.id ? null : task.id);
+                                    const key = `task-${task.id}`;
+                                    setAssigneePickerOpen(assigneePickerOpen === key ? null : key);
                                   }}
                                 />
-                                {assigneePickerOpen === task.id && (
+                                {assigneePickerOpen === `task-${task.id}` && (
                                   <AssigneePicker
                                     current={task.assignee}
                                     onSelect={(val) => updateAssignee(task.id, val)}
@@ -467,21 +506,6 @@ export default function TaskBoardPage() {
                                   rows={2}
                                   className="w-full bg-gray-50/80 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 placeholder-gray-400 outline-none focus:ring-1 focus:ring-emerald-500 focus:border-transparent resize-none transition-all duration-200"
                                 />
-                                <div className="flex items-center gap-2 mt-2">
-                                  <button
-                                    onClick={() => saveEdit(task.id)}
-                                    className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition-colors"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingId(null)}
-                                    className="px-3 py-1 text-gray-500 hover:text-gray-700 text-xs font-medium transition-colors"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <span className="text-[10px] text-gray-400 ml-auto">Enter to save & add new task</span>
-                                </div>
                               </div>
                             ) : (
                               task.notes && (
@@ -498,32 +522,77 @@ export default function TaskBoardPage() {
                           {/* Subtasks */}
                           {isExpanded && (
                             <div className="ml-10 mt-1 space-y-1">
-                              {subtasks.map(sub => (
-                                <div
-                                  key={sub.id}
-                                  className="flex items-center gap-3 px-4 py-2 rounded-lg group/sub hover:bg-gray-50 transition-colors"
-                                >
-                                  <button
-                                    onClick={() => toggleSubtask(task.id, sub.id)}
-                                    className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
-                                      sub.done
-                                        ? 'bg-emerald-500 border-emerald-500 text-white'
-                                        : 'border-gray-300 hover:border-emerald-400'
-                                    }`}
+                              {subtasks.map(sub => {
+                                const subKey = `${task.id}-${sub.id}`;
+                                const isEditingSub = editingSubId === subKey;
+                                const pickerKey = `sub-${task.id}-${sub.id}`;
+
+                                return (
+                                  <div
+                                    key={sub.id}
+                                    className="flex items-center gap-3 px-4 py-2 rounded-lg group/sub hover:bg-gray-50 transition-colors"
                                   >
-                                    {sub.done && <Check size={10} strokeWidth={3} />}
-                                  </button>
-                                  <span className={`flex-1 text-sm ${sub.done ? 'line-through text-gray-400' : 'text-gray-600'}`}>
-                                    {sub.title}
-                                  </span>
-                                  <button
-                                    onClick={() => removeSubtask(task.id, sub.id)}
-                                    className="opacity-0 group-hover/sub:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all duration-200"
-                                  >
-                                    <X size={12} />
-                                  </button>
-                                </div>
-                              ))}
+                                    <button
+                                      onClick={() => toggleSubtask(task.id, sub.id)}
+                                      className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                                        sub.done
+                                          ? 'bg-emerald-500 border-emerald-500 text-white'
+                                          : 'border-gray-300 hover:border-emerald-400'
+                                      }`}
+                                    >
+                                      {sub.done && <Check size={10} strokeWidth={3} />}
+                                    </button>
+
+                                    {isEditingSub ? (
+                                      <input
+                                        ref={subEditRef}
+                                        type="text"
+                                        value={editingSubTitle}
+                                        onChange={e => setEditingSubTitle(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') saveSubtaskEdit(task.id, sub.id);
+                                          if (e.key === 'Escape') setEditingSubId(null);
+                                        }}
+                                        onBlur={() => saveSubtaskEdit(task.id, sub.id)}
+                                        className="flex-1 bg-white border border-emerald-300 rounded-lg px-2 py-0.5 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-emerald-500"
+                                      />
+                                    ) : (
+                                      <span
+                                        onClick={() => startEditingSubtask(task.id, sub)}
+                                        className={`flex-1 text-sm cursor-text ${sub.done ? 'line-through text-gray-400' : 'text-gray-600'}`}
+                                      >
+                                        {sub.title}
+                                      </span>
+                                    )}
+
+                                    {/* Subtask assignee */}
+                                    <div className="relative flex-shrink-0">
+                                      <AssigneeTag
+                                        assignee={sub.assignee}
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setAssigneePickerOpen(assigneePickerOpen === pickerKey ? null : pickerKey);
+                                        }}
+                                      />
+                                      {assigneePickerOpen === pickerKey && (
+                                        <AssigneePicker
+                                          current={sub.assignee}
+                                          onSelect={(val) => updateSubtaskAssignee(task.id, sub.id, val)}
+                                          onClose={() => setAssigneePickerOpen(null)}
+                                        />
+                                      )}
+                                    </div>
+
+                                    <button
+                                      onClick={() => removeSubtask(task.id, sub.id)}
+                                      className="opacity-0 group-hover/sub:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all duration-200"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                );
+                              })}
 
                               {/* Add subtask input */}
                               {addingSubtask === task.id && (
