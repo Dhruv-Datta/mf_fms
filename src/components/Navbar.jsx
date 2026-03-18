@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import {
   Briefcase, Search, Eye, FolderOpen, LogOut, ClipboardList,
-  ChevronDown, Shield, BarChart3, PieChart, FileText, Scale, DollarSign,
+  ChevronDown, Shield, BarChart3, PieChart, FileText, Scale, DollarSign, Link2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -38,10 +38,11 @@ const NAV_GROUPS = [
     icon: FolderOpen,
     items: [
       { href: '/documents', label: 'Documents', icon: FolderOpen },
+      { href: '/link-database', label: 'Link Database', icon: Link2 },
       { href: '/financials', label: 'Financials', icon: DollarSign },
       { href: '/legal', label: 'Legal', icon: Scale },
     ],
-    matchPaths: ['/documents', '/financials', '/legal'],
+    matchPaths: ['/documents', '/link-database', '/financials', '/legal'],
   },
 ];
 
