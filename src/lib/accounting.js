@@ -287,6 +287,32 @@ export function addPeriod(state, quarterIndex, startDate, endDate, endAUM) {
   return newState;
 }
 
+// Close the current (last) period by setting its end date and AUM,
+// then create a new "current" period starting the next day with AUM carried forward.
+export function closePeriod(state, quarterIndex, closeDate, closeAUM, newStartDate) {
+  const newState = structuredClone(state);
+  const events = newState.quarters[quarterIndex].events;
+  // Find the last period event
+  let lastPeriodIdx = -1;
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (events[i].type === 'period') { lastPeriodIdx = i; break; }
+  }
+  if (lastPeriodIdx === -1) return newState;
+
+  // Close the current period
+  events[lastPeriodIdx].endDate = closeDate;
+  events[lastPeriodIdx].endAUM = closeAUM;
+
+  // Add new current period starting the next day
+  events.push({
+    type: 'period',
+    startDate: newStartDate,
+    endDate: new Date().toISOString().split('T')[0],
+    endAUM: closeAUM,
+  });
+  return newState;
+}
+
 export function removePeriod(state, quarterIndex, eventIndex) {
   const newState = structuredClone(state);
   newState.quarters[quarterIndex].events.splice(eventIndex, 1);

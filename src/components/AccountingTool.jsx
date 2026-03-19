@@ -12,7 +12,7 @@ import {
   computeInvestorPerformance,
   updateEndAUM, addContribution, removeContribution, addPeriod, removePeriod,
   addQuarter, removeQuarter, updateContribution, updatePeriodDates,
-  updateContributionDate
+  updateContributionDate, closePeriod
 } from '@/lib/accounting';
 import { formatMoneyPrecise, formatPct, formatNumber } from '@/lib/formatters';
 import { supabase } from '@/lib/supabase';
@@ -144,39 +144,52 @@ function AddContributionModal({ investors, onAdd, onClose }) {
   );
 }
 
-function AddPeriodModal({ onAdd, onClose, defaultAUM }) {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endAUM, setEndAUM] = useState(defaultAUM ? defaultAUM.toFixed(2) : '');
+function NextPeriodModal({ onClose, onNextPeriod, currentAUM }) {
+  const today = new Date().toISOString().split('T')[0];
+  const nextDay = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [closeDate, setCloseDate] = useState(today);
+  const [closeAUM, setCloseAUM] = useState(currentAUM ? currentAUM.toFixed(2) : '');
+  const [newStartDate, setNewStartDate] = useState(nextDay(today));
+
+  // Auto-update new start date when close date changes
+  useEffect(() => {
+    if (closeDate) setNewStartDate(nextDay(closeDate));
+  }, [closeDate]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const aum = parseFloat(endAUM);
-    if (!startDate || !endDate) return;
-    onAdd(startDate, endDate, isNaN(aum) ? 0 : aum);
+    const aum = parseFloat(closeAUM);
+    if (!closeDate || !newStartDate || isNaN(aum)) return;
+    onNextPeriod(closeDate, aum, newStartDate);
     onClose();
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Add Period</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Next Period</h3>
+        <p className="text-xs text-gray-500 mb-4">Close the current period by setting the final date and AUM. A new current period starts the next day.</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Start Date</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
+            <label className="block text-sm font-medium text-gray-600 mb-1">Close Date</label>
+            <input type="date" value={closeDate} onChange={e => setCloseDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">End Date</label>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
+            <label className="block text-sm font-medium text-gray-600 mb-1">Close AUM</label>
+            <input type="number" step="0.01" value={closeAUM} onChange={e => setCloseAUM(e.target.value)} required placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">End AUM</label>
-            <input type="number" step="0.01" value={endAUM} onChange={e => setEndAUM(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
+            <label className="block text-sm font-medium text-gray-600 mb-1">New Period Start</label>
+            <input type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} required className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-colors">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl hover:from-emerald-700 hover:to-emerald-600 transition-all shadow-sm">Add</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl hover:from-blue-700 hover:to-blue-600 transition-all shadow-sm">Next Period</button>
           </div>
         </form>
       </div>
@@ -218,7 +231,7 @@ function AddQuarterModal({ onAdd, onClose }) {
 // Renders the accounting table for a single quarter — mirrors the top block
 // of each workbook sheet (rows 1-22, columns C onwards).
 
-function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter }) {
+function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter, liveAUM, aumLoading }) {
   const { investors } = state;
   const { computedEvents } = computedQuarter;
   const [showContribModal, setShowContribModal] = useState(null); // afterEventIndex
@@ -229,6 +242,15 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
   const columns = [];
   let periodNum = 0;
 
+  // Find the last period index to mark it as "current"
+  let lastPeriodEventIndex = -1;
+  for (let i = computedEvents.length - 1; i >= 0; i--) {
+    if (computedEvents[i].type === 'period') { lastPeriodEventIndex = i; break; }
+  }
+
+  // Check if this is the last quarter overall
+  const isLastQuarter = quarterIndex === state.quarters.length - 1;
+
   for (let ei = 0; ei < computedEvents.length; ei++) {
     const ce = computedEvents[ei];
     const rawEvent = state.quarters[quarterIndex].events[ei];
@@ -237,8 +259,9 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
       columns.push({ kind: 'contribution', data: ce, eventIndex: ei, raw: rawEvent });
     } else if (ce.type === 'period') {
       periodNum++;
-      columns.push({ kind: 'period-start', data: ce, periodNum, eventIndex: ei, raw: rawEvent });
-      columns.push({ kind: 'period-end', data: ce, periodNum, eventIndex: ei, raw: rawEvent });
+      const isCurrent = isLastQuarter && ei === lastPeriodEventIndex;
+      columns.push({ kind: 'period-start', data: ce, periodNum, eventIndex: ei, raw: rawEvent, isCurrent });
+      columns.push({ kind: 'period-end', data: ce, periodNum, eventIndex: ei, raw: rawEvent, isCurrent, isLoading: isCurrent && aumLoading });
     }
   }
 
@@ -268,19 +291,19 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 }
                 if (col.kind === 'period-start') {
                   return (
-                    <th key={ci} className={`${headerCell} bg-gray-50/50 min-w-[120px]`}>
+                    <th key={ci} className={`${headerCell} ${col.isCurrent ? 'bg-blue-50/50' : 'bg-gray-50/50'} min-w-[120px]`}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <span>P{col.periodNum} Start</span>
+                        <span>{col.isCurrent ? 'Current Start' : `P${col.periodNum} Start`}</span>
                         <span className="text-[10px] text-gray-400">{fmtDate(col.data.startDate)}</span>
                       </div>
                     </th>
                   );
                 }
                 return (
-                  <th key={ci} className={`${headerCell} min-w-[120px]`}>
+                  <th key={ci} className={`${headerCell} ${col.isCurrent ? 'bg-blue-50/50' : ''} min-w-[120px]`}>
                     <div className="flex flex-col items-end gap-0.5">
-                      <span>P{col.periodNum} End</span>
-                      <span className="text-[10px] text-gray-400">{fmtDate(col.data.endDate)}</span>
+                      <span>{col.isCurrent ? 'Current' : `P${col.periodNum} End`}</span>
+                      <span className={`text-[10px] ${col.isCurrent ? 'text-blue-500' : 'text-gray-400'}`}>{fmtDate(col.data.endDate)}</span>
                     </div>
                   </th>
                 );
@@ -298,7 +321,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                   <button
                     onClick={() => setShowPeriodModal(true)}
                     className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Add period"
+                    title="Next period"
                   >
                     <Plus size={14} />
                   </button>
@@ -323,12 +346,20 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                   return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmt$(col.data.startAUM)}</td>;
                 }
                 return (
-                  <td key={ci} className={`${cellBase}`}>
-                    <EditableCell
-                      value={col.data.endAUM}
-                      onChange={v => setState(updateEndAUM(state, quarterIndex, col.eventIndex, v))}
-                      className="font-semibold text-gray-900"
-                    />
+                  <td key={ci} className={`${cellBase} ${col.isCurrent ? 'bg-blue-50/30' : ''}`}>
+                    {col.isCurrent ? (
+                      aumLoading ? (
+                        <div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto" />
+                      ) : (
+                        <span className="font-semibold text-gray-900">{fmt$(col.data.endAUM)}</span>
+                      )
+                    ) : (
+                      <EditableCell
+                        value={col.data.endAUM}
+                        onChange={v => setState(updateEndAUM(state, quarterIndex, col.eventIndex, v))}
+                        className="font-semibold text-gray-900"
+                      />
+                    )}
                   </td>
                 );
               })}
@@ -345,7 +376,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 if (col.kind === 'period-start') {
                   return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmtNav(col.data.startNAV)}</td>;
                 }
-                return <td key={ci} className={`${cellBase} text-gray-900 font-semibold`}>{fmtNav(col.data.endNAV)}</td>;
+                return <td key={ci} className={`${cellBase} text-gray-900 font-semibold`}>{col.isLoading ? <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /> : fmtNav(col.data.endNAV)}</td>;
               })}
               <td />
             </tr>
@@ -360,7 +391,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 if (col.kind === 'period-start') {
                   return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmtShares(col.data.startTotalShares)}</td>;
                 }
-                return <td key={ci} className={`${cellBase} text-gray-900`}>{fmtShares(col.data.endTotalShares)}</td>;
+                return <td key={ci} className={`${cellBase} text-gray-900`}>{col.isLoading ? <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /> : fmtShares(col.data.endTotalShares)}</td>;
               })}
               <td />
             </tr>
@@ -392,6 +423,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 if (col.kind !== 'period-end') {
                   return <td key={ci} className={col.kind === 'contribution' ? `${cellBase} bg-emerald-50/40 border-l border-dashed border-emerald-200` : `${cellBase} bg-gray-50/30`} />;
                 }
+                if (col.isLoading) return <td key={ci} className={cellBase}><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>;
                 const val = col.data.periodReturn;
                 const color = val >= 0 ? 'text-emerald-700' : 'text-red-600';
                 return <td key={ci} className={`${cellBase} font-semibold ${color}`}>{fmtPct(val)}</td>;
@@ -406,6 +438,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 if (col.kind !== 'period-end') {
                   return <td key={ci} className={col.kind === 'contribution' ? `${cellBase} bg-emerald-50/40 border-l border-dashed border-emerald-200` : `${cellBase} bg-gray-50/30`} />;
                 }
+                if (col.isLoading) return <td key={ci} className={cellBase}><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>;
                 const val = col.data.qtdReturn;
                 const color = val >= 0 ? 'text-emerald-700' : 'text-red-600';
                 return <td key={ci} className={`${cellBase} font-semibold ${color}`}>{fmtPct(val)}</td>;
@@ -420,6 +453,7 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
                 if (col.kind !== 'period-end') {
                   return <td key={ci} className={col.kind === 'contribution' ? `${cellBase} bg-emerald-50/40 border-l border-dashed border-emerald-200` : `${cellBase} bg-gray-50/30`} />;
                 }
+                if (col.isLoading) return <td key={ci} className={cellBase}><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>;
                 const val = col.data.cumulativeReturn;
                 const color = val >= 0 ? 'text-emerald-700' : 'text-red-600';
                 return <td key={ci} className={`${cellBase} font-semibold ${color}`}>{fmtPct(val)}</td>;
@@ -510,16 +544,11 @@ function QuarterTable({ quarter, quarterIndex, state, setState, computedQuarter 
         />
       )}
       {showPeriodModal && (
-        <AddPeriodModal
-          defaultAUM={(() => {
-            // Auto-fill with the latest AUM from this quarter's computed events
-            for (let i = computedEvents.length - 1; i >= 0; i--) {
-              if (computedEvents[i].type === 'period') return computedEvents[i].endAUM;
-              if (computedEvents[i].type === 'contribution') return computedEvents[i].aumAfter;
-            }
-            return null;
-          })()}
-          onAdd={(sd, ed, aum) => setState(addPeriod(state, quarterIndex, sd, ed, aum))}
+        <NextPeriodModal
+          currentAUM={liveAUM}
+          onNextPeriod={(closeDate, closeAUM, newStartDate) =>
+            setState(closePeriod(state, quarterIndex, closeDate, closeAUM, newStartDate))
+          }
           onClose={() => setShowPeriodModal(false)}
         />
       )}
@@ -577,7 +606,8 @@ function InvestorRows({ investor, columns, cellBase, rowLabel, sectionLabel, sta
           if (col.kind === 'period-start') {
             return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmt$(col.data.investorStart[investor]?.capital)}</td>;
           }
-          return <td key={ci} className={`${cellBase} text-gray-900`}>{fmt$(col.data.investorEnd[investor]?.capital)}</td>;
+          const loading = <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" />;
+          return <td key={ci} className={`${cellBase} text-gray-900`}>{col.isLoading ? loading : fmt$(col.data.investorEnd[investor]?.capital)}</td>;
         })}
         <td />
       </tr>
@@ -592,7 +622,8 @@ function InvestorRows({ investor, columns, cellBase, rowLabel, sectionLabel, sta
           if (col.kind === 'period-start') {
             return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmtPct(col.data.investorStart[investor]?.equity)}</td>;
           }
-          return <td key={ci} className={`${cellBase} text-gray-900`}>{fmtPct(col.data.investorEnd[investor]?.equity)}</td>;
+          const loading = <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" />;
+          return <td key={ci} className={`${cellBase} text-gray-900`}>{col.isLoading ? loading : fmtPct(col.data.investorEnd[investor]?.equity)}</td>;
         })}
         <td />
       </tr>
@@ -612,7 +643,8 @@ function InvestorRows({ investor, columns, cellBase, rowLabel, sectionLabel, sta
           if (col.kind === 'period-start') {
             return <td key={ci} className={`${cellBase} bg-gray-50/30 text-gray-600`}>{fmtShares(col.data.investorStart[investor]?.shares)}</td>;
           }
-          return <td key={ci} className={`${cellBase} text-gray-900`}>{fmtShares(col.data.investorEnd[investor]?.shares)}</td>;
+          const loading = <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" />;
+          return <td key={ci} className={`${cellBase} text-gray-900`}>{col.isLoading ? loading : fmtShares(col.data.investorEnd[investor]?.shares)}</td>;
         })}
         <td />
       </tr>
@@ -817,6 +849,43 @@ export default function AccountingTool() {
   const [state, setState] = useState(null);
   const [activeTab, setActiveTab] = useState('accounting'); // 'accounting' | 'investor-performance'
   const [activeQuarter, setActiveQuarter] = useState(0);
+
+  // Fetch live AUM from holdings + quotes
+  const [liveAUM, setLiveAUM] = useState(null);
+  const [aumLoading, setAumLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAUM() {
+      try {
+        const portfolioRes = await fetch('/api/portfolio');
+        const portfolio = await portfolioRes.json();
+        const holdings = portfolio?.holdings || [];
+        const cash = portfolio?.cash || 0;
+
+        if (holdings.length === 0) {
+          if (!cancelled) { setLiveAUM(cash); setAumLoading(false); }
+          return;
+        }
+
+        const tickers = holdings.map(h => h.ticker).join(',');
+        const quotesRes = await fetch(`/api/quotes?tickers=${tickers}`);
+        const data = await quotesRes.json();
+        const quotes = data.quotes || data;
+
+        const nav = holdings.reduce((sum, h) => {
+          const price = quotes[h.ticker]?.price || h.cost_basis;
+          return sum + h.shares * price;
+        }, 0);
+
+        if (!cancelled) { setLiveAUM(nav + cash); setAumLoading(false); }
+      } catch (err) {
+        console.error('Failed to fetch live AUM:', err);
+        if (!cancelled) setAumLoading(false);
+      }
+    }
+    fetchAUM();
+    return () => { cancelled = true; };
+  }, []);
   const [showAddQuarter, setShowAddQuarter] = useState(false);
 
   // Backfill S&P benchmark data from seed onto a parsed state object
@@ -911,11 +980,22 @@ export default function AccountingTool() {
     });
   }, [state]);
 
-  // Compute timeline
+  // Compute timeline — auto-set the last period's end date to today and AUM to live value
   const computedTimeline = useMemo(() => {
     if (!state) return [];
-    return computeFullTimeline(state);
-  }, [state]);
+    const derived = structuredClone(state);
+    const lastQ = derived.quarters[derived.quarters.length - 1];
+    if (lastQ) {
+      for (let i = lastQ.events.length - 1; i >= 0; i--) {
+        if (lastQ.events[i].type === 'period') {
+          lastQ.events[i].endDate = new Date().toISOString().split('T')[0];
+          if (liveAUM != null) lastQ.events[i].endAUM = liveAUM;
+          break;
+        }
+      }
+    }
+    return computeFullTimeline(derived);
+  }, [state, liveAUM]);
 
   // Validation
   const validationErrors = useMemo(() => {
@@ -1023,6 +1103,8 @@ export default function AccountingTool() {
           state={state}
           setState={setState}
           computedQuarter={computedTimeline[activeQuarter]}
+          liveAUM={liveAUM}
+          aumLoading={aumLoading}
         />
       )}
 
