@@ -349,14 +349,32 @@ export default function TaskBoardPage() {
     setEditingSubTitle(sub.title);
   };
 
-  const saveSubtaskEdit = (taskId, subtaskId) => {
+  const saveSubtaskEdit = (taskId, subtaskId, { thenAdd = false } = {}) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) { setEditingSubId(null); return; }
     const newTitle = editingSubTitle.trim();
-    if (!newTitle) { setEditingSubId(null); return; }
-    const subtasks = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, title: newTitle } : s);
-    setEditingSubId(null);
-    updateSubtasks(taskId, subtasks);
+    if (!newTitle) {
+      // Remove the empty subtask if it has no title
+      const cleaned = (task.subtasks || []).filter(s => s.id !== subtaskId || s.title.trim());
+      if (cleaned.length !== (task.subtasks || []).length) updateSubtasks(taskId, cleaned);
+      setEditingSubId(null);
+      return;
+    }
+    const currentSubs = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, title: newTitle } : s);
+
+    if (thenAdd) {
+      // Insert a new empty subtask right after the current one
+      const idx = currentSubs.findIndex(s => s.id === subtaskId);
+      const newSub = { id: Date.now(), title: '', done: false, assignee: '' };
+      const subtasks = [...currentSubs.slice(0, idx + 1), newSub, ...currentSubs.slice(idx + 1)];
+      updateSubtasks(taskId, subtasks);
+      // Start editing the new subtask
+      setEditingSubId(`${taskId}-${newSub.id}`);
+      setEditingSubTitle('');
+    } else {
+      setEditingSubId(null);
+      updateSubtasks(taskId, currentSubs);
+    }
   };
 
   const updateSubtaskAssignee = (taskId, subtaskId, assignee) => {
@@ -364,6 +382,55 @@ export default function TaskBoardPage() {
     if (!task) return;
     const subtasks = (task.subtasks || []).map(s => s.id === subtaskId ? { ...s, assignee } : s);
     updateSubtasks(taskId, subtasks);
+  };
+
+  // Subtask drag reorder — pointer-event based, immediate swap on crossing midpoints
+  const [subDragId, setSubDragId] = useState(null); // currently dragging subtask id
+  const subDragTaskId = useRef(null);
+  const subRowRefs = useRef({}); // subId -> element ref
+
+  const handleSubPointerDown = (e, taskId, subId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSubDragId(subId);
+    subDragTaskId.current = taskId;
+
+    const onMove = (ev) => {
+      const tid = subDragTaskId.current;
+      if (!tid) return;
+      // Find which row the pointer is over by checking midpoints
+      const task = tasksRef.current.find(t => t.id === tid);
+      if (!task) return;
+      const subs = task.subtasks || [];
+      const curIdx = subs.findIndex(s => s.id === subId);
+      if (curIdx === -1) return;
+
+      for (let i = 0; i < subs.length; i++) {
+        if (i === curIdx) continue;
+        const el = subRowRefs.current[subs[i].id];
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        // If dragging down and pointer passed below a lower item's midpoint, swap
+        // If dragging up and pointer passed above a higher item's midpoint, swap
+        if ((i > curIdx && ev.clientY > midY) || (i < curIdx && ev.clientY < midY)) {
+          const newSubs = [...subs];
+          const [moved] = newSubs.splice(curIdx, 1);
+          newSubs.splice(i, 0, moved);
+          updateSubtasks(tid, newSubs);
+          break; // only swap one at a time
+        }
+      }
+    };
+
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      setSubDragId(null);
+      subDragTaskId.current = null;
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
   };
 
   // --- Drag and Drop ---
@@ -745,17 +812,27 @@ export default function TaskBoardPage() {
 
                           {/* Subtasks */}
                           {isExpanded && (
-                            <div className="ml-10 mt-1 space-y-1">
+                            <div className="ml-10 mt-1">
                               {subtasks.map(sub => {
                                 const subKey = `${task.id}-${sub.id}`;
                                 const isEditingSub = editingSubId === subKey;
                                 const pickerKey = `sub-${task.id}-${sub.id}`;
+                                const isDraggingThis = subDragId === sub.id;
 
                                 return (
                                   <div
                                     key={sub.id}
-                                    className="flex items-center gap-3 px-4 py-2 rounded-lg group/sub hover:bg-gray-50 transition-colors"
+                                    ref={el => { subRowRefs.current[sub.id] = el; }}
+                                    className={`flex items-center gap-3 px-4 py-2 rounded-lg group/sub hover:bg-gray-50 transition-all duration-150 ${
+                                      isDraggingThis ? 'bg-emerald-50 shadow-sm ring-1 ring-emerald-200 scale-[1.01]' : ''
+                                    } ${subDragId && !isDraggingThis ? 'transition-all duration-200' : ''}`}
                                   >
+                                    <div
+                                      onPointerDown={(e) => handleSubPointerDown(e, task.id, sub.id)}
+                                      className="flex-shrink-0 text-gray-300 opacity-0 group-hover/sub:opacity-100 transition-opacity cursor-grab touch-none select-none"
+                                    >
+                                      <GripVertical size={12} />
+                                    </div>
                                     <button
                                       onClick={() => toggleSubtask(task.id, sub.id)}
                                       className={`flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
@@ -774,7 +851,7 @@ export default function TaskBoardPage() {
                                         value={editingSubTitle}
                                         onChange={e => setEditingSubTitle(e.target.value)}
                                         onKeyDown={e => {
-                                          if (e.key === 'Enter') saveSubtaskEdit(task.id, sub.id);
+                                          if (e.key === 'Enter') { e.preventDefault(); saveSubtaskEdit(task.id, sub.id, { thenAdd: true }); }
                                           if (e.key === 'Escape') setEditingSubId(null);
                                         }}
                                         onBlur={() => saveSubtaskEdit(task.id, sub.id)}
