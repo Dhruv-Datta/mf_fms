@@ -222,6 +222,7 @@ export default function RelationshipsPage() {
   const [displayId, setDisplayId] = useState(null); // lags behind selId for animation
   const [panelAnim, setPanelAnim] = useState(false);
   const animTimer = useRef(null);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     if (animTimer.current) clearTimeout(animTimer.current);
@@ -256,6 +257,18 @@ export default function RelationshipsPage() {
   const [cf, setCf] = useState(emptyC);
 
   const sel = contacts.find(c => c.id === displayId); // use displayId so old content stays during fade-out
+
+  // Click anywhere outside the detail panel to close it
+  useEffect(() => {
+    if (!selId) return;
+    const handler = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setSelId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [selId]);
 
   /* ─── data ─── */
   useEffect(() => {
@@ -514,8 +527,8 @@ export default function RelationshipsPage() {
                   </div>
                 </div>
 
-                {/* Bubble area — clicking empty space closes panel */}
-                <div className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`} onClick={() => setSelId(null)}>
+                {/* Bubble area */}
+                <div className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`}>
                   {/* Subtle dot grid */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
@@ -536,7 +549,8 @@ export default function RelationshipsPage() {
                           draggable
                           onDragStart={e => onDragStart(e, c.id)}
                           onDragEnd={onDragEnd}
-                          onClick={(e) => { e.stopPropagation(); setSelId(isSelected ? null : c.id); }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={() => setSelId(isSelected ? null : c.id)}
                           className={`absolute rounded-full flex flex-col items-center justify-center cursor-grab select-none group ${isDrag ? 'opacity-40' : ''}`}
                           style={{
                             left: `calc(${pos.xPct}% - ${pos.r}px)`, top: `calc(${pos.yPct}% - ${pos.r}px)`,
@@ -589,7 +603,7 @@ export default function RelationshipsPage() {
         </div>
 
         {/* Detail Panel — absolute overlay, slides in from right */}
-        <div className={`absolute top-0 right-0 h-full w-[380px] z-20 transition-all duration-200 ease-out ${selId ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0 pointer-events-none'}`}>
+        <div ref={panelRef} className={`absolute top-0 right-0 h-full w-[380px] z-20 transition-all duration-200 ease-out ${selId ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0 pointer-events-none'}`}>
           {sel && (() => {
             const _d = daysSince(sel.last_contacted_at);
             const _zoneKey = getZone(sel);
