@@ -190,7 +190,9 @@ export default function TaskBoardPage() {
     }
   }, [editingSubId]);
 
-  const tasksByPriority = (key) => tasks.filter(t => t.priority === key);
+  const tasksByPriority = (key) => tasks.filter(t => t.priority === key && !t.done);
+  const completedTasks = tasks.filter(t => t.done);
+  const [completedOpen, setCompletedOpen] = useState(false);
   const totalOpen = tasks.filter(t => !t.done).length;
 
   // --- Task CRUD ---
@@ -968,6 +970,45 @@ export default function TaskBoardPage() {
               </div>
             );
           })}
+
+          {/* Completed Tasks */}
+          {completedTasks.length > 0 && (
+            <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+              <button
+                onClick={() => setCompletedOpen(o => !o)}
+                className="flex items-center gap-3 w-full"
+              >
+                <ChevronRight size={16} className={`text-gray-400 transition-transform duration-200 ${completedOpen ? 'rotate-90' : ''}`} />
+                <span className="w-3 h-3 rounded-full bg-gray-300" />
+                <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Completed</h2>
+                <span className="text-xs font-medium text-gray-400 border border-gray-200 rounded-full px-2.5 py-0.5">
+                  {completedTasks.length}
+                </span>
+              </button>
+
+              {completedOpen && (
+                <div className="mt-4 space-y-1">
+                  {completedTasks.map(task => (
+                    <div key={task.id} className="flex items-center gap-3 px-4 py-3 rounded-xl group hover:bg-gray-50 transition-colors">
+                      <button
+                        onClick={() => toggleDone(task.id, task.done)}
+                        className="flex-shrink-0 w-5 h-5 rounded-md bg-emerald-500 border-2 border-emerald-500 text-white flex items-center justify-center transition-all duration-200 hover:bg-emerald-400 hover:border-emerald-400"
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </button>
+                      <span className="flex-1 text-sm text-gray-400 line-through">{task.title}</span>
+                      {task.assignee && (
+                        <span className={`text-xs px-2 py-0.5 font-medium rounded-full border opacity-50 ${getAssigneeStyle(task.assignee)}`}>
+                          {task.assignee}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-300 uppercase tracking-wide">{task.priority}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       )}
