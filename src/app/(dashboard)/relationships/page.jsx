@@ -94,7 +94,7 @@ function computeZoneLayout(contacts, w, h, isHighZone) {
   // Auto-scale radii so total bubble area fits ~55% of panel
   const baseRadii = contacts.map(c => 26 + (c.importance || 3) * 7);
   const totalArea = baseRadii.reduce((s, r) => s + Math.PI * (r + 12) * (r + 12), 0);
-  const scale = Math.min(1, Math.sqrt((w * h * 0.55) / totalArea));
+  const scale = Math.sqrt((w * h * 0.55) / totalArea);
   const gap = Math.max(10, 22 * scale);
   const pad = 10;
 
@@ -237,6 +237,8 @@ export default function RelationshipsPage() {
   const closeTimer = useRef(null);
   const panelRef = useRef(null);
   const displayIdRef = useRef(null);
+  const zoneRef = useRef(null); // ref to measure actual zone dimensions
+  const [zoneDims, setZoneDims] = useState({ w: 400, h: 600 }); // actual zone pixel dimensions
 
   useEffect(() => {
     if (animTimer.current) clearTimeout(animTimer.current);
@@ -313,6 +315,16 @@ export default function RelationshipsPage() {
     })();
   }, []);
 
+  /* ─── measure actual zone dimensions for responsive scaling ─── */
+  useEffect(() => {
+    if (!zoneRef.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setZoneDims({ w: width, h: height });
+    });
+    ro.observe(zoneRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   /* ─── filtered + grouped + positioned ─── */
   const getZone = useCallback((c) => getUrgencyGroup(c), []);
@@ -343,9 +355,8 @@ export default function RelationshipsPage() {
     return g;
   }, [filtered, getZone]);
 
-  // Virtual space matches actual panel aspect ratio (~1:1.5 width:height)
-  const ZONE_W = 400;
-  const ZONE_H = 600;
+  // Use actual measured zone dimensions for layout computation
+  const { w: ZONE_W, h: ZONE_H } = zoneDims;
   // Cache previous positions so non-matching bubbles can pop out from where they were
   const prevPositionsRef = useRef({ low: {}, medium: {}, high: {} });
   const zonePositions = useMemo(() => {
@@ -368,7 +379,7 @@ export default function RelationshipsPage() {
     }
     prevPositionsRef.current = merged;
     return merged;
-  }, [grouped]);
+  }, [grouped, ZONE_W, ZONE_H]);
 
   /* ─── drag and drop ─── */
   const onDragStart = useCallback((e, contactId) => {
@@ -595,7 +606,7 @@ export default function RelationshipsPage() {
                 </div>
 
                 {/* Bubble area */}
-                <div className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`}>
+                <div ref={zoneIdx === 0 ? zoneRef : undefined} className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`}>
                   {/* Subtle dot grid */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
@@ -605,7 +616,7 @@ export default function RelationshipsPage() {
                       const pos = zPos[c.id];
                       const isMatch = matchIds.has(c.id);
                       const imp = c.importance || 3;
-                      const r = 26 + imp * 7;
+                      const r = pos ? pos.r : 26 + imp * 7;
                       // Non-matching bubbles: pop to scale(0); matching without pos: skip
                       if (!isMatch && !pos) {
                         // Render a ghost at center so it can pop out
