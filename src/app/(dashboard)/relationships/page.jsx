@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Users, Plus, Phone, Mail,
   Search, X, Trash2,
@@ -219,6 +219,30 @@ export default function RelationshipsPage() {
   const [confirm, setConfirm] = useState(null);
 
   const [selId, setSelId] = useState(null);
+  const [displayId, setDisplayId] = useState(null); // lags behind selId for animation
+  const [panelAnim, setPanelAnim] = useState(false);
+  const animTimer = useRef(null);
+
+  useEffect(() => {
+    if (animTimer.current) clearTimeout(animTimer.current);
+    if (!selId) {
+      // closing panel — no swap animation needed
+      setDisplayId(null);
+      setPanelAnim(false);
+    } else if (!displayId) {
+      // opening fresh — show immediately
+      setDisplayId(selId);
+      setPanelAnim(false);
+    } else if (selId !== displayId) {
+      // switching — fade out old, then swap in new
+      setPanelAnim(true);
+      animTimer.current = setTimeout(() => {
+        setDisplayId(selId);
+        setPanelAnim(false);
+      }, 150);
+    }
+    return () => { if (animTimer.current) clearTimeout(animTimer.current); };
+  }, [selId]); // intentionally only depends on selId
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [adding, setAdding] = useState(false);
@@ -231,7 +255,7 @@ export default function RelationshipsPage() {
   const emptyC = { name: '', company: '', role: '', importance: 3, contact_method: 'email', contact_value: '', city: '', summary: '' };
   const [cf, setCf] = useState(emptyC);
 
-  const sel = contacts.find(c => c.id === selId);
+  const sel = contacts.find(c => c.id === displayId); // use displayId so old content stays during fade-out
 
   /* ─── data ─── */
   useEffect(() => {
@@ -457,9 +481,9 @@ export default function RelationshipsPage() {
         );
       })()}
 
-      {/* Main area — 3 zone columns + detail panel */}
-      <div className="flex gap-0">
-        <div className={`flex gap-3 transition-all duration-300 ${selId ? 'flex-1 min-w-0' : 'w-full'}`} style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Main area — 3 zone columns + detail panel overlay */}
+      <div className="relative" style={{ height: 'calc(100vh - 200px)' }}>
+        <div className="flex gap-3 h-full">
           {ZONES.map(zone => {
             const zContacts = grouped[zone.key] || [];
             const zPos = zonePositions[zone.key] || {};
@@ -490,10 +514,10 @@ export default function RelationshipsPage() {
                   </div>
                 </div>
 
-                {/* Bubble area */}
-                <div className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`}>
+                {/* Bubble area — clicking empty space closes panel */}
+                <div className={`flex-1 relative bg-gradient-to-br ${zone.bg} overflow-hidden`} onClick={() => setSelId(null)}>
                   {/* Subtle dot grid */}
-                  <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #64748b 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
                   {/* Render bubbles */}
                   <div className="relative w-full h-full">
@@ -512,7 +536,7 @@ export default function RelationshipsPage() {
                           draggable
                           onDragStart={e => onDragStart(e, c.id)}
                           onDragEnd={onDragEnd}
-                          onClick={() => setSelId(isSelected ? null : c.id)}
+                          onClick={(e) => { e.stopPropagation(); setSelId(isSelected ? null : c.id); }}
                           className={`absolute rounded-full flex flex-col items-center justify-center cursor-grab select-none group ${isDrag ? 'opacity-40' : ''}`}
                           style={{
                             left: `calc(${pos.xPct}% - ${pos.r}px)`, top: `calc(${pos.yPct}% - ${pos.r}px)`,
@@ -564,8 +588,8 @@ export default function RelationshipsPage() {
           })}
         </div>
 
-        {/* Detail Panel — inlined to prevent remount on parent state change */}
-        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${selId && sel ? 'w-[380px] ml-3 opacity-100' : 'w-0 ml-0 opacity-0'}`}>
+        {/* Detail Panel — absolute overlay, slides in from right */}
+        <div className={`absolute top-0 right-0 h-full w-[380px] z-20 transition-all duration-200 ease-out ${selId ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0 pointer-events-none'}`}>
           {sel && (() => {
             const _d = daysSince(sel.last_contacted_at);
             const _zoneKey = getZone(sel);
@@ -575,7 +599,7 @@ export default function RelationshipsPage() {
               ? new Date(new Date(sel.last_contacted_at).getTime() + 14 * 86400000).toISOString().split('T')[0]
               : ahead(14);
             return (
-              <div className="h-full bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden shadow-sm" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+              <div className={`h-full bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden shadow-lg transition-all duration-150 ease-out ${panelAnim ? 'opacity-0 scale-[0.98]' : 'opacity-100 scale-100'}`} style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100">
                   <div className="flex items-start justify-between mb-1">
