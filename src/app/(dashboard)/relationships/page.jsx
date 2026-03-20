@@ -675,7 +675,7 @@ export default function RelationshipsPage() {
         </div>
 
         {/* Detail Panel — absolute overlay, slides in from right */}
-        <div ref={panelRef} className={`absolute top-0 right-0 h-full w-[380px] z-20 ${selId ? 'translate-x-0 opacity-100 transition-all duration-[400ms] ease-out' : 'translate-x-6 opacity-0 pointer-events-none transition-all duration-[350ms] ease-in-out'}`}>
+        <div ref={panelRef} className={`absolute top-0 right-0 h-full w-[380px] z-20 transition-opacity ${selId ? 'opacity-100 duration-[400ms] ease-out' : 'opacity-0 pointer-events-none duration-[350ms] ease-in-out'}`}>
           {sel && (() => {
             const _d = daysSince(sel.last_contacted_at);
             const _zoneKey = getZone(sel);
@@ -685,7 +685,7 @@ export default function RelationshipsPage() {
               ? new Date(new Date(sel.last_contacted_at).getTime() + 14 * 86400000).toISOString().split('T')[0]
               : ahead(14);
             return (
-              <div className={`h-full bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden shadow-lg ${panelAnim ? 'opacity-0 scale-[0.97] transition-all duration-[220ms] ease-in' : 'opacity-100 scale-100 transition-all duration-[350ms] ease-out'}`} style={{ maxHeight: 'calc(100vh - 200px)' }}>
+              <div className={`h-full bg-white border border-gray-200 rounded-2xl flex flex-col overflow-hidden shadow-lg ${panelAnim ? 'opacity-0 transition-opacity duration-[220ms] ease-in' : 'opacity-100 transition-opacity duration-[350ms] ease-out'}`} style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100">
                   <div className="flex items-start justify-between mb-1">
