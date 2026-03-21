@@ -13,20 +13,32 @@ const PRIORITY_SECTIONS = [
   { key: 'low',     label: 'LOW PRIORITY',    color: 'bg-emerald-500', maxTasks: null },
 ];
 
-const ASSIGNEE_PRESETS = ['Dhruv', 'Bhuvan', 'Both'];
+const COLOR_PALETTE = [
+  '#2563eb', // blue
+  '#dc2626', // red
+  '#16a34a', // green
+  '#9333ea', // purple
+  '#ea580c', // orange
+  '#0891b2', // cyan
+  '#c026d3', // fuchsia
+  '#ca8a04', // amber
+  '#4f46e5', // indigo
+  '#be123c', // rose
+];
 
-const ASSIGNEE_COLORS = {
-  dhruv:  'bg-[#2563eb] text-white border-[#2563eb]',
-  bhuvan: 'bg-[#dc2626] text-white border-[#dc2626]',
-  both:   'bg-[#16a34a] text-white border-[#16a34a]',
-};
-
-function getAssigneeStyle(assignee) {
-  if (!assignee) return '';
-  return ASSIGNEE_COLORS[assignee.toLowerCase()] || 'bg-gray-500 text-white border-gray-500';
+function getColorForAssignee(assignee, savedAssignees) {
+  if (!assignee) return null;
+  const found = savedAssignees.find(a => a.name.toLowerCase() === assignee.toLowerCase());
+  return found ? found.color : '#6b7280';
 }
 
-function AssigneeTag({ assignee, onClick, size = 'normal' }) {
+function getAssigneeInlineStyle(assignee, savedAssignees) {
+  const color = getColorForAssignee(assignee, savedAssignees);
+  if (!color) return {};
+  return { backgroundColor: color, borderColor: color, color: '#fff' };
+}
+
+function AssigneeTag({ assignee, onClick, size = 'normal', savedAssignees = [] }) {
   if (!assignee) {
     return (
       <button
@@ -42,15 +54,18 @@ function AssigneeTag({ assignee, onClick, size = 'normal' }) {
   return (
     <button
       onClick={onClick}
-      className={`font-medium rounded-full border transition-colors hover:opacity-80 ${sizeClasses} ${getAssigneeStyle(assignee)}`}
+      className={`font-medium rounded-full border transition-colors hover:opacity-80 ${sizeClasses}`}
+      style={getAssigneeInlineStyle(assignee, savedAssignees)}
     >
       {assignee}
     </button>
   );
 }
 
-function AssigneePicker({ current, onSelect, onClose, anchorRef }) {
+function AssigneePicker({ current, onSelect, onClose, anchorRef, savedAssignees = [], onAddAssignee, onRemoveAssignee }) {
   const [customValue, setCustomValue] = useState('');
+  const [selectedColor, setSelectedColor] = useState(COLOR_PALETTE[0]);
+  const [showAddForm, setShowAddForm] = useState(false);
   const ref = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
@@ -69,35 +84,93 @@ function AssigneePicker({ current, onSelect, onClose, anchorRef }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
+  const handleAddPerson = () => {
+    const name = customValue.trim();
+    if (!name) return;
+    if (onAddAssignee) onAddAssignee(name, selectedColor);
+    onSelect(name);
+    onClose();
+  };
+
   return createPortal(
-    <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-100%)' }} className="z-[9999] bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[140px]">
-      {ASSIGNEE_PRESETS.map(name => (
-        <button
+    <div ref={ref} style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-100%)' }} className="z-[9999] bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[160px]">
+      {savedAssignees.map(({ name, color }) => (
+        <div
           key={name}
-          onClick={() => { onSelect(name); onClose(); }}
-          className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 ${
-            current?.toLowerCase() === name.toLowerCase() ? 'font-semibold' : ''
-          }`}
+          className="group/row flex items-center hover:bg-gray-50 transition-colors"
         >
-          <span className={`w-2 h-2 rounded-full ${getAssigneeStyle(name).split(' ')[0]}`} />
-          {name}
-        </button>
-      ))}
-      <div className="border-t border-gray-100 mt-1 pt-1 px-2 pb-1">
-        <div className="flex items-center gap-1">
-          <input
-            type="text"
-            placeholder="Other..."
-            value={customValue}
-            onChange={e => setCustomValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && customValue.trim()) { onSelect(customValue.trim()); onClose(); }
-              if (e.key === 'Escape') onClose();
-            }}
-            className="flex-1 text-sm px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500 min-w-0"
-          />
+          <button
+            onClick={() => { onSelect(name); onClose(); }}
+            className={`flex-1 text-left px-3 py-1.5 text-sm flex items-center gap-2 ${
+              current?.toLowerCase() === name.toLowerCase() ? 'font-semibold' : ''
+            }`}
+          >
+            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+            {name}
+          </button>
+          {onRemoveAssignee && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemoveAssignee(name); }}
+              className="opacity-0 group-hover/row:opacity-100 pr-2 text-gray-300 hover:text-red-500 transition-all"
+              title={`Remove ${name}`}
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
+      ))}
+
+      <div className="border-t border-gray-100 mt-1 pt-1">
+        {!showAddForm ? (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="w-full text-left px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors flex items-center gap-2"
+          >
+            <Plus size={12} />
+            Add person...
+          </button>
+        ) : (
+          <div className="px-2.5 pb-2 pt-1 space-y-2">
+            <input
+              type="text"
+              placeholder="Name..."
+              value={customValue}
+              onChange={e => setCustomValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAddPerson();
+                if (e.key === 'Escape') { setShowAddForm(false); setCustomValue(''); }
+              }}
+              autoFocus
+              className="w-full text-sm px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {COLOR_PALETTE.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedColor(c)}
+                  className={`w-5 h-5 rounded-full transition-all ${selectedColor === c ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {customValue.trim() && (
+                <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: selectedColor }}>
+                  {customValue.trim()}
+                </span>
+              )}
+              <button
+                onClick={handleAddPerson}
+                disabled={!customValue.trim()}
+                className="ml-auto text-xs px-2 py-1 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-30 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
       {current && (
         <button
           onClick={() => { onSelect(''); onClose(); }}
@@ -162,6 +235,7 @@ export default function TaskBoardPage() {
   const [editingSubId, setEditingSubId] = useState(null);                 // '{taskId}-{subId}'
   const [editingSubTitle, setEditingSubTitle] = useState('');
   const [activeId, setActiveId] = useState(null);
+  const [savedAssignees, setSavedAssignees] = useState([]);
   const tasksSnapshot = useRef(null);
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
@@ -185,7 +259,55 @@ export default function TaskBoardPage() {
     }
   }, []);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  const fetchAssignees = useCallback(async () => {
+    try {
+      const res = await fetch('/api/assignees');
+      const data = await res.json();
+      if (Array.isArray(data.assignees) && data.assignees.length > 0) {
+        setSavedAssignees(data.assignees);
+      } else {
+        // seed defaults
+        const defaults = [
+          { name: 'Dhruv',  color: '#2563eb' },
+          { name: 'Bhuvan', color: '#dc2626' },
+          { name: 'Both',   color: '#16a34a' },
+        ];
+        setSavedAssignees(defaults);
+        fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: defaults }) });
+      }
+    } catch (err) {
+      console.error('Failed to load assignees', err);
+      setSavedAssignees([
+        { name: 'Dhruv',  color: '#2563eb' },
+        { name: 'Bhuvan', color: '#dc2626' },
+        { name: 'Both',   color: '#16a34a' },
+      ]);
+    }
+  }, []);
+
+  useEffect(() => { fetchTasks(); fetchAssignees(); }, [fetchTasks, fetchAssignees]);
+
+  const addAssignee = useCallback(async (name, color) => {
+    const exists = savedAssignees.find(a => a.name.toLowerCase() === name.toLowerCase());
+    if (exists) return;
+    const updated = [...savedAssignees, { name, color }];
+    setSavedAssignees(updated);
+    try {
+      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated }) });
+    } catch (err) {
+      console.error('Failed to save assignees', err);
+    }
+  }, [savedAssignees]);
+
+  const removeAssignee = useCallback(async (name) => {
+    const updated = savedAssignees.filter(a => a.name.toLowerCase() !== name.toLowerCase());
+    setSavedAssignees(updated);
+    try {
+      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated }) });
+    } catch (err) {
+      console.error('Failed to save assignees', err);
+    }
+  }, [savedAssignees]);
 
   useEffect(() => {
     if (editingId && editRef.current) {
@@ -769,6 +891,7 @@ export default function TaskBoardPage() {
                               <div className="relative flex-shrink-0" ref={el => { assigneeAnchorRefs.current[`task-${task.id}`] = el; }}>
                                 <AssigneeTag
                                   assignee={task.assignee}
+                                  savedAssignees={savedAssignees}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const key = `task-${task.id}`;
@@ -781,6 +904,9 @@ export default function TaskBoardPage() {
                                     onSelect={(val) => updateAssignee(task.id, val)}
                                     onClose={() => setAssigneePickerOpen(null)}
                                     anchorRef={{ current: assigneeAnchorRefs.current[`task-${task.id}`] }}
+                                    savedAssignees={savedAssignees}
+                                    onAddAssignee={addAssignee}
+                                    onRemoveAssignee={removeAssignee}
                                   />
                                 )}
                               </div>
@@ -897,6 +1023,7 @@ export default function TaskBoardPage() {
                                       <AssigneeTag
                                         assignee={sub.assignee}
                                         size="small"
+                                        savedAssignees={savedAssignees}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           setAssigneePickerOpen(assigneePickerOpen === pickerKey ? null : pickerKey);
@@ -908,6 +1035,9 @@ export default function TaskBoardPage() {
                                           onSelect={(val) => updateSubtaskAssignee(task.id, sub.id, val)}
                                           onClose={() => setAssigneePickerOpen(null)}
                                           anchorRef={{ current: assigneeAnchorRefs.current[pickerKey] }}
+                                          savedAssignees={savedAssignees}
+                                          onAddAssignee={addAssignee}
+                                    onRemoveAssignee={removeAssignee}
                                         />
                                       )}
                                     </div>
