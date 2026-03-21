@@ -449,7 +449,6 @@ export default function ResearchPage() {
       <div className="flex items-center justify-between mb-8 animate-fade-in-up">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Position Review</h1>
-          <p className="text-gray-500 mt-1">Review fundamentals and underwriting for current holdings</p>
         </div>
         {dataExists && (
           <button

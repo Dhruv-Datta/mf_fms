@@ -677,7 +677,7 @@ function InvestorPerformanceTab({ computedTimeline, state }) {
   return (
     <div className="space-y-6">
       {/* ── Section 1: Summary Table ──────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-in-up stagger-2">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
             <Users size={16} className="text-emerald-600" />
@@ -737,7 +737,7 @@ function InvestorPerformanceTab({ computedTimeline, state }) {
         if (!m) return null;
 
         return (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-in-up stagger-4">
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">{m.name} — Detail</h2>
             </div>
@@ -816,28 +816,6 @@ function InvestorPerformanceTab({ computedTimeline, state }) {
         );
       })()}
 
-      {/* ── Validation ────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-          {validationErrors.length === 0 ? (
-            <><CheckCircle size={16} className="text-emerald-500" /> Investor Validation Passed</>
-          ) : (
-            <><AlertTriangle size={16} className="text-amber-500" /> Investor Validation Issues ({validationErrors.length})</>
-          )}
-        </h3>
-        {validationErrors.length === 0 ? (
-          <p className="text-sm text-gray-500">Shares match engine, ownership sums to 100%, capital values sum to AUM.</p>
-        ) : (
-          <div className="space-y-2">
-            {validationErrors.map((err, i) => (
-              <div key={i} className="flex items-start gap-2 text-sm text-red-600">
-                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                <span>{err}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -1104,6 +1082,7 @@ export default function AccountingTool() {
 
       {/* Quarter Table */}
       {computedTimeline[activeQuarter] && (
+        <div className="animate-fade-in-up stagger-4">
         <QuarterTable
           quarter={state.quarters[activeQuarter]}
           quarterIndex={activeQuarter}
@@ -1113,11 +1092,12 @@ export default function AccountingTool() {
           liveAUM={liveAUM}
           aumLoading={aumLoading}
         />
+        </div>
       )}
 
       {/* Empty quarter state */}
       {state.quarters[activeQuarter]?.events.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div className="animate-fade-in-up stagger-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <p className="text-gray-400 text-sm mb-4">No periods in this quarter yet.</p>
           <button
             onClick={() => {/* trigger add period modal via ref or state - handled within QuarterTable */}}
@@ -1128,28 +1108,6 @@ export default function AccountingTool() {
         </div>
       )}
 
-      {/* Validation */}
-      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-          {validationErrors.length === 0 ? (
-            <><CheckCircle size={16} className="text-emerald-500" /> Validation Passed</>
-          ) : (
-            <><AlertTriangle size={16} className="text-amber-500" /> Validation Issues ({validationErrors.length})</>
-          )}
-        </h3>
-        {validationErrors.length === 0 ? (
-          <p className="text-sm text-gray-500">All accounting invariants hold. Shares sum correctly, NAV * shares = AUM, capital totals match.</p>
-        ) : (
-          <div className="space-y-2">
-            {validationErrors.map((err, i) => (
-              <div key={i} className={`flex items-start gap-2 text-sm ${err.level === 'error' ? 'text-red-600' : 'text-amber-600'}`}>
-                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                <span><span className="font-semibold">{err.quarter}:</span> {err.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       </>}
 

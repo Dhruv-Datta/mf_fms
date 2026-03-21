@@ -615,14 +615,14 @@ export default function HoldingsPage() {
 
             return (
               <>
-                <p className="text-xs text-gray-400 mb-6 font-medium">
+                <p className="text-xs text-gray-400 mb-6 font-medium animate-fade-in-up">
                   Underwritten factor model · {m.daysUsed} trading days
                 </p>
 
                 {/* ── Top metric cards ── */}
                 {stocks.length > 0 && (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 animate-fade-in-up stagger-2">
                       <Card>
                         <div className="text-2xl font-bold text-gray-900">{m.observedVol != null ? `${m.observedVol}%` : '—'}</div>
                         <div className="text-xs text-gray-400 mt-1">Portfolio Volatility</div>
@@ -642,7 +642,7 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* ── Portfolio Risk Profile ── */}
-                    <Card title="Portfolio Risk Profile" className="mb-6">
+                    <Card title="Portfolio Risk Profile" className="mb-6 animate-fade-in-up stagger-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                         {allFactors.map(f => {
                           const val = factorProfile[f] ?? 0;
@@ -666,7 +666,7 @@ export default function HoldingsPage() {
                     </Card>
 
                     {/* ── Chart + Overlap side by side ── */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-stretch">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-stretch animate-fade-in-up stagger-6">
                       {/* Underwritten Risk Contribution by Stock */}
                       <Card title="Composite Risk Contribution" className="flex flex-col">
                         <div className="flex-1" style={{ minHeight: Math.max(200, stocks.length * 32) }}>
@@ -777,7 +777,7 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* ── Stock-Level Risk Attribution Table ── */}
-                    <Card title="Stock-Level Risk Attribution" className="mb-6">
+                    <Card title="Stock-Level Risk Attribution" className="mb-6 animate-fade-in-up stagger-8">
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
@@ -853,7 +853,7 @@ export default function HoldingsPage() {
                     </Card>
 
                     {/* ── Factor Model Configuration ── */}
-                    <Card title="Factor Model Configuration" className="mb-6">
+                    <Card title="Factor Model Configuration" className="mb-6 animate-fade-in-up stagger-10">
                       <div className="space-y-4">
                         <div>
                           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Factors & Importance Weights</h3>
@@ -1061,7 +1061,7 @@ export default function HoldingsPage() {
                   const maxAbsChange = Math.max(...sectorPerfSorted.map(s => Math.abs(s.avgChange)), 0.01);
 
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 animate-fade-in-up stagger-2">
                       {/* Sector Exposure */}
                       <Card title="Sector Exposure">
                         {sorted.length === 0 ? (
@@ -1189,6 +1189,7 @@ export default function HoldingsPage() {
                 })()}
 
               {/* Position Fundamentals Table */}
+              <div className="animate-fade-in-up stagger-6">
               <Card
                 title="Position Fundamentals"
                 actions={
@@ -1246,6 +1247,7 @@ export default function HoldingsPage() {
                   </table>
                 </div>
               </Card>
+              </div>
             </>
           )}
         </>

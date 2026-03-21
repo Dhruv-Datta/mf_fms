@@ -471,7 +471,7 @@ export default function DocumentsPage() {
       {/* Main layout: sidebar + content */}
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 animate-fade-in-up stagger-2">
         {/* Sidebar */}
-        <div className="space-y-6 animate-slide-in-right stagger-3">
+        <div className="space-y-6 animate-fade-in-up stagger-3">
           {/* Category nav */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
             <button
