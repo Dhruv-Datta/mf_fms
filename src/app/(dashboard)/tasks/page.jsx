@@ -21,9 +21,7 @@ const COLOR_PALETTE = [
   '#ea580c', // orange
   '#0891b2', // cyan
   '#c026d3', // fuchsia
-  '#ca8a04', // amber
   '#4f46e5', // indigo
-  '#be123c', // rose
 ];
 
 function getColorForAssignee(assignee, savedAssignees) {
