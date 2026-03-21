@@ -175,6 +175,17 @@ body {
   pointer-events: none;
 }
 
+/* ── Slide-in panel ──────────────────────────────────────────── */
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out both;
+}
+
 .gradient-text {
   background: linear-gradient(135deg, #10b981, #06b6d4);
   -webkit-background-clip: text;

@@ -11,11 +11,12 @@ import {
   Legend,
 } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
-import { BarChart3, Settings, Target, Zap } from 'lucide-react';
+import { BarChart3, Settings, Target, Zap, X, SlidersHorizontal } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 const riskFactors = ['Volatility', 'Regulatory', 'Disruption', 'Valuation', 'Earnings Quality'];
+const riskFactorShortLabels = ['Vol', 'Reg', 'Disr', 'Val', 'EQ'];
 
 const defaultRiskFactorWeights = [0.9, 0.3, 0.7, 0.6, 0.8];
 
@@ -102,6 +103,7 @@ export default function AllocationPage() {
   const [simulationChart, setSimulationChart] = useState(null);
   const [simulating, setSimulating] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const saveTimer = useRef(null);
   const tableRef = useRef(null);
 
@@ -577,218 +579,180 @@ export default function AllocationPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
+      {/* Settings slide-out panel */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50" onClick={() => setSettingsOpen(false)}>
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl border-l border-gray-200 overflow-y-auto animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Settings</h2>
+              <button onClick={() => setSettingsOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-8">
+              {/* Portfolio Constraints */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Settings className="w-4 h-4 text-gray-500" />
+                  <h3 className="text-sm font-semibold text-gray-900">Portfolio Constraints</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Risk-Free Rate (%)</label>
+                    <input type="number" min="0" step="0.01" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Portfolios</label>
+                    <input type="number" min="100" step="100" value={numPortfolios} onChange={(e) => setNumPortfolios(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Stock Min Weight (%)</label>
+                    <input type="number" min="0" step="0.01" value={minWeight} onChange={(e) => setMinWeight(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Stock Max Weight (%)</label>
+                    <input type="number" min="0" step="0.01" value={maxWeight} onChange={(e) => setMaxWeight(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Cash Min Weight (%)</label>
+                    <input type="number" min="0" step="0.01" value={cashMinWeight} onChange={(e) => setCashMinWeight(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Cash Max Weight (%)</label>
+                    <input type="number" min="0" step="0.01" value={cashMaxWeight} onChange={(e) => setCashMaxWeight(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Risk Factor Weights */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Target className="w-4 h-4 text-gray-500" />
+                  <h3 className="text-sm font-semibold text-gray-900">Risk Factor Weights</h3>
+                </div>
+                <div className="space-y-3">
+                  {riskFactors.map((factor, index) => (
+                    <div key={factor} className="flex items-center justify-between gap-4">
+                      <label className="text-sm text-gray-600 min-w-[120px]">{factor}</label>
+                      <input type="number" min="0" step="0.01" value={riskFactorWeights[index]} onChange={(e) => updateRiskFactorWeight(index, e.target.value)} className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="animate-fade-in-up">
         <div className="flex items-center justify-between mb-6 animate-fade-in-up">
           <h1 className="text-3xl font-bold text-gray-900">Project Optimum</h1>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-4 py-2 rounded-xl transition-colors"
+          >
+            <SlidersHorizontal size={15} />
+            Settings
+          </button>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-8 animate-fade-in-up stagger-2">
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="w-4 h-4 text-gray-600" />
-              <h3 className="text-sm font-semibold text-gray-900">Portfolio Constraints</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Risk-Free Rate (%)</label>
+        {/* Asset cards */}
+        <div ref={tableRef} className="space-y-2 animate-fade-in-up stagger-2">
+          {allocations.map((row, idx) => (
+            <div key={row.id} className="group bg-white border border-gray-100 rounded-2xl px-5 py-4 hover:border-gray-200 hover:shadow-sm transition-all">
+              {/* Top row: Ticker, Return, Weight, Remove */}
+              <div className="flex items-center gap-5">
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={riskFreeRate}
-                  onChange={(e) => setRiskFreeRate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                  type="text"
+                  value={row.ticker}
+                  onChange={(e) => updateAllocation(row.id, 'ticker', e.target.value.toUpperCase())}
+                  className="w-20 text-sm font-bold text-gray-900 bg-transparent border-0 outline-none placeholder:text-gray-300 placeholder:font-normal"
+                  placeholder="TICKER"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Portfolios</label>
-                <input
-                  type="number"
-                  min="100"
-                  step="100"
-                  value={numPortfolios}
-                  onChange={(e) => setNumPortfolios(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Min Weight (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={minWeight}
-                  onChange={(e) => setMinWeight(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Max Weight (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={maxWeight}
-                  onChange={(e) => setMaxWeight(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cash Min Weight (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cashMinWeight}
-                  onChange={(e) => setCashMinWeight(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cash Max Weight (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cashMaxWeight}
-                  onChange={(e) => setCashMaxWeight(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                />
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-4 h-4 text-gray-600" />
-              <h3 className="text-sm font-semibold text-gray-900">Risk Factor Weights</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {riskFactors.map((factor, index) => (
-                <div key={factor}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{factor}</label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Exp. Return</span>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={riskFactorWeights[index]}
-                    onChange={(e) => updateRiskFactorWeight(index, e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
+                    type="number" min="0" step="0.01"
+                    data-col="expectedReturn" data-row={idx}
+                    value={row.expectedReturn}
+                    onChange={(e) => updateAllocation(row.id, 'expectedReturn', e.target.value)}
+                    onKeyDown={(e) => handleColumnTab(e, 'expectedReturn', idx)}
+                    className="w-16 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-right focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all"
+                    placeholder="0"
                   />
+                  <span className="text-xs text-gray-400">%</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 animate-fade-in-up stagger-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Asset Parameters</h3>
-          <div className="overflow-x-auto">
-            <table ref={tableRef} className="min-w-full text-left text-sm">
-              <thead className="text-gray-600 border-b border-gray-300">
-                <tr>
-                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Ticker</th>
-                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Expected Return (%)</th>
-                  {riskFactors.map((factor) => (
-                    <th key={factor} className="px-3 py-2 font-semibold text-center whitespace-nowrap">
-                      {factor}
-                    </th>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Weight</span>
+                  <input
+                    type="number" min="0" step="0.01"
+                    data-col="userWeight" data-row={idx}
+                    value={row.userWeight}
+                    onKeyDown={(e) => handleColumnTab(e, 'userWeight', idx)}
+                    onChange={(e) => updateAllocation(row.id, 'userWeight', e.target.value)}
+                    className="w-16 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-right focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all"
+                    placeholder="0"
+                  />
+                  <span className="text-xs text-gray-400">%</span>
+                </div>
+
+                {allocations.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeAllocation(row.id)}
+                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Bottom row: Risk factor exposures */}
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-50">
+                <span className="text-[10px] font-medium text-gray-300 uppercase tracking-wide shrink-0">Risk Factors</span>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {row.factorExposures.map((value, index) => (
+                    <div key={`${row.id}-${riskFactors[index]}`} className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-gray-400">{riskFactors[index]}</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={value}
+                        onChange={(e) => updateAllocationExposure(row.id, index, e.target.value)}
+                        className="w-14 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-0.5 text-right focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all"
+                        placeholder="0"
+                      />
+                    </div>
                   ))}
-                  <th className="px-3 py-2 font-semibold whitespace-nowrap">User Weight (%)</th>
-                  <th className="px-3 py-2 font-semibold whitespace-nowrap"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {allocations.map((row, idx) => (
-                  <tr key={row.id} className={idx > 0 ? 'border-t border-gray-200' : ''}>
-                    <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        value={row.ticker}
-                        onChange={(e) => updateAllocation(row.id, 'ticker', e.target.value)}
-                        className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                        placeholder="AAPL"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        data-col="expectedReturn"
-                        data-row={idx}
-                        value={row.expectedReturn}
-                        onChange={(e) => updateAllocation(row.id, 'expectedReturn', e.target.value)}
-                        onKeyDown={(e) => handleColumnTab(e, 'expectedReturn', idx)}
-                        className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                        placeholder="0.00"
-                      />
-                    </td>
-                    {row.factorExposures.map((value, index) => (
-                      <td key={`${row.id}-${riskFactors[index]}`} className="px-3 py-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={value}
-                          onChange={(e) => updateAllocationExposure(row.id, index, e.target.value)}
-                          className="w-20 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                          placeholder="0.00"
-                        />
-                      </td>
-                    ))}
-                    <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        data-col="userWeight"
-                        data-row={idx}
-                        value={row.userWeight}
-                        onKeyDown={(e) => handleColumnTab(e, 'userWeight', idx)}
-                        onChange={(e) => updateAllocation(row.id, 'userWeight', e.target.value)}
-                        className="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all"
-                        placeholder="0.00"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      {allocations.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeAllocation(row.id)}
-                          className="text-xs font-semibold text-red-600 hover:text-red-700"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6 animate-fade-in-up stagger-5">
+        {/* Actions */}
+        <div className="flex items-center justify-between mt-5 animate-fade-in-up stagger-3">
           <button
             type="button"
             onClick={addAllocation}
-            className="inline-flex items-center justify-center px-5 py-2.5 border-2 border-cyan-600 text-cyan-700 rounded-xl font-semibold hover:bg-cyan-50 transition-colors"
+            className="text-sm font-medium text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-xl transition-colors"
           >
-            Add Asset
+            + Add Asset
           </button>
           <button
             type="button"
             onClick={runMonteCarloSimulation}
             disabled={simulating}
-            className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-cyan-600 text-white rounded-xl font-semibold hover:bg-cyan-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
           >
             {simulating ? (
               <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Simulating...
               </>
             ) : (
@@ -800,74 +764,132 @@ export default function AllocationPage() {
           </button>
         </div>
 
-        {simulationError && <p className="mt-4 text-sm text-red-600 font-semibold">{simulationError}</p>}
+        {simulationError && <p className="mt-4 text-sm text-red-600 font-medium">{simulationError}</p>}
 
+        {/* Results */}
         {simulationChart && (
           <div className="mt-8 bg-white border border-gray-200 rounded-2xl p-6 animate-fade-in-up">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Efficient Frontier (Weighted Composite Risk)
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Efficient Frontier</h3>
+              {simulationResult && (
+                <span className="text-xs text-gray-400">{simulationResult.totalSamples.toLocaleString()} portfolios generated</span>
+              )}
+            </div>
             <Scatter data={simulationChart} options={simulationChartOptions} />
           </div>
         )}
 
         {simulationResult && (
-          <div className="mt-8 space-y-6 animate-fade-in-up">
-            <div className="text-sm text-gray-500">
-              Generated portfolios: <span className="font-semibold text-gray-900">{simulationResult.totalSamples}</span>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-                <h4 className="font-semibold text-gray-900 mb-2">Max Composite Ratio</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Return {(simulationResult.maxSharpe.expectedReturn * 100).toFixed(2)}% • Volatility{' '}
-                  {(simulationResult.maxSharpe.volatility * 100).toFixed(2)}% • Composite Ratio{' '}
-                  {simulationResult.maxSharpe.compositeRatio.toFixed(2)}
-                </p>
-                <ul className="space-y-2 text-sm text-gray-700">
+          <div className="mt-6 animate-fade-in-up">
+            {/* Optimal portfolios — compact summary cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* Max Composite */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <h4 className="text-sm font-semibold text-gray-900">Max Composite Ratio</h4>
+                </div>
+                <div className="flex items-baseline gap-3 mb-4">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{(simulationResult.maxSharpe.expectedReturn * 100).toFixed(1)}%</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Return</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-500">{(simulationResult.maxSharpe.volatility * 100).toFixed(1)}%</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Risk</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-500">{simulationResult.maxSharpe.compositeRatio.toFixed(2)}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Ratio</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                   {simulationResult.maxSharpe.weights.map((item) => (
-                    <li key={`max-${item.ticker}`} className="flex justify-between">
-                      <span>{item.ticker}</span>
-                      <span className="font-semibold">{(item.weight * 100).toFixed(2)}%</span>
-                    </li>
+                    <div key={`max-${item.ticker}`} className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">{item.ticker}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-red-400 rounded-full" style={{ width: `${Math.min(((item.weight * 100) / (parseNumber(maxWeight) || 15)) * 100, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-500 w-12 text-right">{(item.weight * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
-                <h4 className="font-semibold text-gray-900 mb-2">Min Risk</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Return {(simulationResult.minVol.expectedReturn * 100).toFixed(2)}% • Volatility{' '}
-                  {(simulationResult.minVol.volatility * 100).toFixed(2)}% • Composite Ratio{' '}
-                  {simulationResult.minVol.compositeRatio.toFixed(2)}
-                </p>
-                <ul className="space-y-2 text-sm text-gray-700">
+
+              {/* Min Risk */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <h4 className="text-sm font-semibold text-gray-900">Min Risk</h4>
+                </div>
+                <div className="flex items-baseline gap-3 mb-4">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{(simulationResult.minVol.expectedReturn * 100).toFixed(1)}%</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Return</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-500">{(simulationResult.minVol.volatility * 100).toFixed(1)}%</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Risk</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-500">{simulationResult.minVol.compositeRatio.toFixed(2)}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Ratio</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                   {simulationResult.minVol.weights.map((item) => (
-                    <li key={`min-${item.ticker}`} className="flex justify-between">
-                      <span>{item.ticker}</span>
-                      <span className="font-semibold">{(item.weight * 100).toFixed(2)}%</span>
-                    </li>
+                    <div key={`min-${item.ticker}`} className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">{item.ticker}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-400 rounded-full" style={{ width: `${Math.min(((item.weight * 100) / (parseNumber(maxWeight) || 15)) * 100, 100)}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-500 w-12 text-right">{(item.weight * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
+
+              {/* User-Defined */}
+              {simulationResult.userDefined && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <h4 className="text-sm font-semibold text-gray-900">Your Portfolio</h4>
+                  </div>
+                  <div className="flex items-baseline gap-3 mb-4">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900">{(simulationResult.userDefined.expectedReturn * 100).toFixed(1)}%</p>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Return</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-gray-500">{(simulationResult.userDefined.volatility * 100).toFixed(1)}%</p>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Risk</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold text-gray-500">{simulationResult.userDefined.compositeRatio.toFixed(2)}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium">Ratio</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {simulationResult.userDefined.weights.map((item) => (
+                      <div key={`user-${item.ticker}`} className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700">{item.ticker}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${Math.min(((item.weight * 100) / (parseNumber(maxWeight) || 15)) * 100, 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 w-12 text-right">{(item.weight * 100).toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            {simulationResult.userDefined && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-                <h4 className="font-semibold text-gray-900 mb-2">User-Defined Portfolio</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Return {(simulationResult.userDefined.expectedReturn * 100).toFixed(2)}% • Volatility{' '}
-                  {(simulationResult.userDefined.volatility * 100).toFixed(2)}% • Composite Ratio{' '}
-                  {simulationResult.userDefined.compositeRatio.toFixed(2)}
-                </p>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  {simulationResult.userDefined.weights.map((item) => (
-                    <li key={`user-${item.ticker}`} className="flex justify-between">
-                      <span>{item.ticker}</span>
-                      <span className="font-semibold">{(item.weight * 100).toFixed(2)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
       </div>
