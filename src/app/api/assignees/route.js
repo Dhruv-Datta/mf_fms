@@ -2,15 +2,22 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 const TABLE = 'app_settings';
-const KEY = 'assignees';
 
-// GET - load saved assignees [{name, color}]
-export async function GET() {
+function getKey(boardId) {
+  return boardId && boardId !== 'default' ? `assignees_${boardId}` : 'assignees';
+}
+
+// GET - load saved assignees [{name, color}] for a board
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const boardId = searchParams.get('board_id') || 'default';
+  const key = getKey(boardId);
+
   try {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
-      .eq('key', KEY)
+      .eq('key', key)
       .single();
 
     if (error && error.code === 'PGRST116') {
@@ -33,17 +40,18 @@ export async function GET() {
   }
 }
 
-// PUT - save assignees list
+// PUT - save assignees list for a board
 export async function PUT(req) {
   try {
-    const { assignees } = await req.json();
+    const { assignees, board_id } = await req.json();
+    const key = getKey(board_id || 'default');
 
     if (!Array.isArray(assignees)) {
       return NextResponse.json({ error: 'assignees must be an array' }, { status: 400 });
     }
 
     const row = {
-      key: KEY,
+      key,
       value: JSON.stringify(assignees),
     };
 

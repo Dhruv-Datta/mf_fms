@@ -13,27 +13,42 @@ import { supabase } from '@/lib/supabase';
     assignee TEXT DEFAULT '',
     subtasks JSONB DEFAULT '[]'::jsonb,
     position INT DEFAULT 0,
+    board_id TEXT DEFAULT 'default',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
   );
 
   CREATE INDEX idx_tasks_priority ON tasks(priority);
+  CREATE INDEX idx_tasks_board_id ON tasks(board_id);
 
-  -- If you already created the table, add missing columns:
-  -- ALTER TABLE tasks ADD COLUMN subtasks JSONB DEFAULT '[]'::jsonb;
-  -- ALTER TABLE tasks ADD COLUMN notes TEXT DEFAULT '';
-  -- ALTER TABLE tasks ADD COLUMN assignee TEXT DEFAULT '';
+  -- If you already have the table, add the board_id column:
+  -- ALTER TABLE tasks ADD COLUMN board_id TEXT DEFAULT 'default';
+  -- CREATE INDEX idx_tasks_board_id ON tasks(board_id);
 */
 
 const TABLE = 'tasks';
 
-// GET — fetch all tasks
-export async function GET() {
-  const { data, error } = await supabase
+// GET — fetch tasks, optionally filtered by board_id
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const boardId = searchParams.get('board_id');
+
+  let query = supabase
     .from(TABLE)
     .select('*')
     .order('position', { ascending: true })
     .order('created_at', { ascending: true });
+
+  if (boardId) {
+    // Include tasks with matching board_id OR tasks with no board_id (legacy) when requesting 'default'
+    if (boardId === 'default') {
+      query = query.or('board_id.eq.default,board_id.is.null');
+    } else {
+      query = query.eq('board_id', boardId);
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -42,25 +57,32 @@ export async function GET() {
 // POST — create a new task
 export async function POST(req) {
   const body = await req.json();
-  const { title, priority = 'low' } = body;
+  const { title, priority = 'low', board_id = 'default' } = body;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
   }
 
-  // Get next position for this priority
-  const { data: existing } = await supabase
+  // Get next position for this priority within this board
+  let query = supabase
     .from(TABLE)
     .select('position')
     .eq('priority', priority)
     .order('position', { ascending: false })
     .limit(1);
 
+  if (board_id === 'default') {
+    query = query.or('board_id.eq.default,board_id.is.null');
+  } else {
+    query = query.eq('board_id', board_id);
+  }
+
+  const { data: existing } = await query;
   const nextPos = existing?.length ? (existing[0].position || 0) + 1 : 0;
 
   const { data, error } = await supabase
     .from(TABLE)
-    .insert({ title: title.trim(), priority, position: nextPos, subtasks: [], updated_at: new Date().toISOString() })
+    .insert({ title: title.trim(), priority, position: nextPos, board_id, subtasks: [], updated_at: new Date().toISOString() })
     .select()
     .single();
 

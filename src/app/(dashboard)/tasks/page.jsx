@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, X, Check, ChevronDown, ChevronRight, User, Pencil, GripVertical } from 'lucide-react';
+import { Plus, X, Check, ChevronDown, ChevronRight, User, Pencil, GripVertical, Trash2 } from 'lucide-react';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -241,7 +241,191 @@ function DroppableSection({ id, isEmpty, children }) {
   );
 }
 
+function BoardSelector({ boards, activeBoardId, onSwitch, onCreate, onRename, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  const getPos = () => {
+    if (!triggerRef.current) return { top: -9999, left: -9999 };
+    const rect = triggerRef.current.getBoundingClientRect();
+    return { top: rect.bottom + 8, left: rect.left };
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+        triggerRef.current && !triggerRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+        setCreatingNew(false);
+        setRenamingId(null);
+        setConfirmDeleteId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const activeBoard = boards.find(b => b.id === activeBoardId) || boards[0];
+
+  if (!activeBoard) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">&nbsp;</h1>
+      </div>
+    );
+  }
+
+  const pos = getPos();
+  const dropdown = open ? createPortal(
+    <div
+      ref={dropdownRef}
+      style={{ position: 'fixed', top: pos.top, left: pos.left }}
+      className="z-[9999] bg-white border border-gray-200 rounded-2xl shadow-xl py-2 min-w-[260px] max-h-80 overflow-y-auto"
+    >
+      {boards.map(board => (
+        <div
+          key={board.id}
+          onClick={() => {
+            if (renamingId || confirmDeleteId) return;
+            onSwitch(board.id);
+            setOpen(false);
+          }}
+          className={`group/row flex items-center gap-2 px-4 py-2.5 cursor-pointer transition-colors ${
+            board.id === activeBoardId ? 'bg-gray-50 font-semibold' : 'hover:bg-gray-50'
+          }`}
+        >
+          {renamingId === board.id ? (
+            <form
+              className="flex-1 flex items-center gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (renameValue.trim()) {
+                  onRename(board.id, renameValue.trim());
+                  setRenamingId(null);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') setRenamingId(null); }}
+                className="flex-1 text-sm px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button type="submit" className="p-1 text-emerald-600 hover:text-emerald-700">
+                <Check size={14} />
+              </button>
+            </form>
+          ) : confirmDeleteId === board.id ? (
+            <div className="flex-1 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+              <span className="text-sm text-red-600">Delete?</span>
+              <button
+                onClick={() => { onDelete(board.id); setConfirmDeleteId(null); setOpen(false); }}
+                className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <>
+              <span className="flex-1 text-sm text-gray-800">{board.name}</span>
+              <div className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1 transition-opacity" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={() => { setRenamingId(board.id); setRenameValue(board.name); setConfirmDeleteId(null); }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <Pencil size={13} />
+                </button>
+                {boards.length > 1 && (
+                  <button
+                    onClick={() => { setConfirmDeleteId(board.id); setRenamingId(null); }}
+                    className="p-1 text-gray-400 hover:text-red-500"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+
+      <div className="border-t border-gray-100 mt-1 pt-1">
+        {!creatingNew ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); setCreatingNew(true); setNewName(''); }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors flex items-center gap-2"
+          >
+            <Plus size={14} />
+            New board...
+          </button>
+        ) : (
+          <form
+            className="px-3 py-2 flex items-center gap-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newName.trim()) {
+                onCreate(newName.trim());
+                setCreatingNew(false);
+                setNewName('');
+                setOpen(false);
+              }
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <input
+              autoFocus
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setCreatingNew(false); }}
+              placeholder="Board name..."
+              className="flex-1 text-sm px-2 py-1 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button type="submit" disabled={!newName.trim()} className="p-1 text-emerald-600 hover:text-emerald-700 disabled:opacity-30">
+              <Check size={14} />
+            </button>
+          </form>
+        )}
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div>
+      <div
+        ref={triggerRef}
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 cursor-pointer group"
+      >
+        <h1 className="text-3xl font-bold text-gray-900">{activeBoard?.name || 'Task Board'}</h1>
+        <ChevronDown size={20} className={`text-gray-400 group-hover:text-gray-600 transition-all ${open ? 'rotate-180' : ''}`} />
+        <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{boards.length}</span>
+      </div>
+      {dropdown}
+    </div>
+  );
+}
+
 export default function TaskBoardPage() {
+  const [boards, setBoards] = useState([]);
+  const [activeBoardId, setActiveBoardId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(null);
@@ -311,9 +495,11 @@ export default function TaskBoardPage() {
     return collisions;
   }, []);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (boardId) => {
+    const bid = boardId || activeBoardId;
+    setLoading(true);
     try {
-      const res = await fetch('/api/tasks');
+      const res = await fetch(`/api/tasks?board_id=${encodeURIComponent(bid)}`);
       const data = await res.json();
       if (Array.isArray(data)) setTasks(data);
     } catch (err) {
@@ -321,35 +507,106 @@ export default function TaskBoardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeBoardId]);
 
-  const fetchAssignees = useCallback(async () => {
+  const fetchAssignees = useCallback(async (boardId) => {
+    const bid = boardId || activeBoardId;
     try {
-      const res = await fetch('/api/assignees');
+      const res = await fetch(`/api/assignees?board_id=${encodeURIComponent(bid)}`);
       const data = await res.json();
       if (Array.isArray(data.assignees) && data.assignees.length > 0) {
         setSavedAssignees(data.assignees);
       } else {
-        // seed defaults
-        const defaults = [
-          { name: 'Dhruv',  color: '#2563eb' },
-          { name: 'Bhuvan', color: '#dc2626' },
-          { name: 'Both',   color: '#16a34a' },
-        ];
-        setSavedAssignees(defaults);
-        fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: defaults }) });
+        setSavedAssignees([]);
       }
     } catch (err) {
       console.error('Failed to load assignees', err);
-      setSavedAssignees([
-        { name: 'Dhruv',  color: '#2563eb' },
-        { name: 'Bhuvan', color: '#dc2626' },
-        { name: 'Both',   color: '#16a34a' },
-      ]);
+      setSavedAssignees([]);
     }
+  }, [activeBoardId]);
+
+  const fetchBoards = useCallback(async () => {
+    try {
+      const res = await fetch('/api/task-boards');
+      const data = await res.json();
+      if (Array.isArray(data.boards) && data.boards.length > 0) {
+        setBoards(data.boards);
+        setActiveBoardId(data.activeBoardId || data.boards[0].id);
+        return data.activeBoardId || data.boards[0].id;
+      }
+    } catch (err) {
+      console.error('Failed to load boards', err);
+    }
+    return 'default';
   }, []);
 
-  useEffect(() => { fetchTasks(); fetchAssignees(); }, [fetchTasks, fetchAssignees]);
+  useEffect(() => {
+    (async () => {
+      const boardId = await fetchBoards();
+      fetchTasks(boardId);
+      fetchAssignees(boardId);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveBoardsMeta = async (newBoards, newActiveId) => {
+    const payload = {};
+    if (newBoards !== undefined) payload.boards = newBoards;
+    if (newActiveId !== undefined) payload.activeBoardId = newActiveId;
+    try {
+      await fetch('/api/task-boards', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('Failed to save boards', err);
+    }
+  };
+
+  const switchBoard = async (boardId) => {
+    if (boardId === activeBoardId) return;
+    setActiveBoardId(boardId);
+    setSavedAssignees([]);
+    saveBoardsMeta(undefined, boardId);
+    fetchTasks(boardId);
+    fetchAssignees(boardId);
+  };
+
+  const createBoard = async (name) => {
+    const id = `board_${Date.now()}`;
+    const newBoards = [...boards, { id, name }];
+    setBoards(newBoards);
+    setActiveBoardId(id);
+    setTasks([]);
+    setSavedAssignees([]);
+    saveBoardsMeta(newBoards, id);
+  };
+
+  const renameBoard = async (id, name) => {
+    const newBoards = boards.map(b => b.id === id ? { ...b, name } : b);
+    setBoards(newBoards);
+    saveBoardsMeta(newBoards, undefined);
+  };
+
+  const deleteBoard = async (id) => {
+    const remaining = boards.filter(b => b.id !== id);
+    if (remaining.length === 0) return;
+    const newActiveId = activeBoardId === id ? remaining[0].id : activeBoardId;
+    setBoards(remaining);
+    setActiveBoardId(newActiveId);
+    saveBoardsMeta(remaining, newActiveId);
+    if (activeBoardId === id) fetchTasks(newActiveId);
+    // Delete all tasks in this board
+    try {
+      const res = await fetch(`/api/tasks?board_id=${encodeURIComponent(id)}`);
+      const tasksInBoard = await res.json();
+      if (Array.isArray(tasksInBoard)) {
+        await Promise.all(tasksInBoard.map(t => fetch(`/api/tasks?id=${t.id}`, { method: 'DELETE' })));
+      }
+    } catch (err) {
+      console.error('Failed to delete board tasks', err);
+    }
+  };
 
   const addAssignee = useCallback(async (name, color) => {
     const exists = savedAssignees.find(a => a.name.toLowerCase() === name.toLowerCase());
@@ -357,21 +614,21 @@ export default function TaskBoardPage() {
     const updated = [...savedAssignees, { name, color }];
     setSavedAssignees(updated);
     try {
-      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated }) });
+      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated, board_id: activeBoardId }) });
     } catch (err) {
       console.error('Failed to save assignees', err);
     }
-  }, [savedAssignees]);
+  }, [savedAssignees, activeBoardId]);
 
   const removeAssignee = useCallback(async (name) => {
     const updated = savedAssignees.filter(a => a.name.toLowerCase() !== name.toLowerCase());
     setSavedAssignees(updated);
     try {
-      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated }) });
+      await fetch('/api/assignees', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assignees: updated, board_id: activeBoardId }) });
     } catch (err) {
       console.error('Failed to save assignees', err);
     }
-  }, [savedAssignees]);
+  }, [savedAssignees, activeBoardId]);
 
   useEffect(() => {
     if (editingId && editRef.current) {
@@ -410,7 +667,7 @@ export default function TaskBoardPage() {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, priority }),
+        body: JSON.stringify({ title, priority, board_id: activeBoardId }),
       });
       const created = await res.json();
       if (res.ok) setTasks(prev => [...prev, created]);
@@ -817,7 +1074,14 @@ export default function TaskBoardPage() {
     <div className="max-w-7xl mx-auto px-6 lg:px-12 pb-16">
       {/* Header */}
       <div className="mb-8 animate-fade-in-up">
-        <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
+        <BoardSelector
+          boards={boards}
+          activeBoardId={activeBoardId}
+          onSwitch={switchBoard}
+          onCreate={createBoard}
+          onRename={renameBoard}
+          onDelete={deleteBoard}
+        />
         <p className="text-sm text-gray-500 mt-1">{totalOpen} open task{totalOpen !== 1 ? 's' : ''}</p>
       </div>
 
@@ -872,8 +1136,9 @@ export default function TaskBoardPage() {
                 </div>
 
                 {/* Task List */}
+                {sectionTasks.length === 0 && adding === key ? null : (
                 <DroppableSection id={`section-${key}`} isEmpty={sectionTasks.length === 0}>
-                {sectionTasks.length === 0 && adding !== key ? (
+                {sectionTasks.length === 0 ? (
                   <p className="text-center text-gray-400 py-8 transition-all duration-300">No tasks yet</p>
                 ) : (
                   <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
@@ -1170,6 +1435,7 @@ export default function TaskBoardPage() {
                   </SortableContext>
                 )}
                 </DroppableSection>
+                )}
 
                 {/* Add Task Input — always at bottom of section */}
                 {adding === key && !atCapacity && (
@@ -1231,7 +1497,10 @@ export default function TaskBoardPage() {
                       </button>
                       <span className="flex-1 text-sm text-gray-400 line-through">{task.title}</span>
                       {task.assignee && (
-                        <span className={`text-xs px-2 py-0.5 font-medium rounded-full border opacity-50 ${getAssigneeStyle(task.assignee)}`}>
+                        <span
+                          className="text-xs px-2 py-0.5 font-medium rounded-full border opacity-50"
+                          style={getAssigneeInlineStyle(task.assignee, savedAssignees)}
+                        >
                           {task.assignee}
                         </span>
                       )}
