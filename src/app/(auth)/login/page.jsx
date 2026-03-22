@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       await login(username, password);
-      router.push('/holdings');
+      router.push('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials');
       setLoading(false);
