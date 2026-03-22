@@ -426,7 +426,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-400">Alpha</span>
+                  <span className="text-xs text-gray-500">Alpha</span>
                   <span className={`text-xs font-bold ${stats.alpha >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {stats.alpha >= 0 ? '+' : ''}{stats.alpha.toFixed(2)}%
                   </span>
@@ -437,7 +437,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-1 bg-gray-50 rounded-xl p-1">
             {TIMEFRAMES.map(tf => (
               <button key={tf.label} onClick={() => setTimeframe(tf.label)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${timeframe === tf.label ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${timeframe === tf.label ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}>
                 {tf.label}
               </button>
             ))}
@@ -454,7 +454,7 @@ export default function DashboardPage() {
               <canvas ref={canvasRef} />
               {hoverInfo && !dragInfo && (
                 <div className="absolute top-2 right-3 z-10 text-right pointer-events-none">
-                  <div className="text-[11px] font-medium text-gray-400">{hoverInfo.date}</div>
+                  <div className="text-[11px] font-medium text-gray-500">{hoverInfo.date}</div>
                   <div className="flex items-center justify-end gap-3 mt-0.5">
                     <div className="flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
@@ -475,27 +475,27 @@ export default function DashboardPage() {
                   <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-xl shadow-lg px-3 py-2.5 min-w-[170px]">
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                      <span className="text-[10px] text-gray-400">Fund</span>
+                      <span className="text-[10px] text-gray-500">Fund</span>
                       <span className={`text-sm font-bold ml-auto ${dragInfo.fundPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {dragInfo.fundPct >= 0 ? '+' : ''}{dragInfo.fundPct.toFixed(2)}%
                       </span>
                     </div>
-                    <div className="text-[10px] text-gray-400 ml-3.5 mb-2">{dragInfo.fundStart} → {dragInfo.fundEnd}</div>
+                    <div className="text-[10px] text-gray-500 ml-3.5 mb-2">{dragInfo.fundStart} → {dragInfo.fundEnd}</div>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-                      <span className="text-[10px] text-gray-400">S&P 500</span>
+                      <span className="text-[10px] text-gray-500">S&P 500</span>
                       <span className={`text-sm font-bold ml-auto ${dragInfo.spPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {dragInfo.spPct >= 0 ? '+' : ''}{dragInfo.spPct.toFixed(2)}%
                       </span>
                     </div>
-                    <div className="text-[10px] text-gray-400 ml-3.5 mb-1.5">{dragInfo.spStart} → {dragInfo.spEnd}</div>
-                    <div className="text-[10px] text-gray-300 border-t border-gray-100 pt-1.5">{dragInfo.startLabel} → {dragInfo.endLabel}</div>
+                    <div className="text-[10px] text-gray-500 ml-3.5 mb-1.5">{dragInfo.spStart} → {dragInfo.spEnd}</div>
+                    <div className="text-[10px] text-gray-500 border-t border-gray-100 pt-1.5">{dragInfo.startLabel} → {dragInfo.endLabel}</div>
                   </div>
                 </div>
               )}
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">No data available</div>
+            <div className="h-full flex items-center justify-center text-gray-500 text-sm">No data available</div>
           )}
         </div>
       </div>
@@ -513,21 +513,21 @@ export default function DashboardPage() {
             const alpha = data.fund - data.sp;
             return (
               <div key={label} className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 shadow-sm">
-                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{label}</div>
+                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-gray-400">Fund</span>
+                  <span className="text-[10px] text-gray-500">Fund</span>
                   <span className={`text-sm font-bold tabular-nums ${data.fund >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {data.fund >= 0 ? '+' : ''}{data.fund.toFixed(2)}%
                   </span>
                 </div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-gray-400">S&P 500</span>
+                  <span className="text-[10px] text-gray-500">S&P 500</span>
                   <span className={`text-xs font-semibold tabular-nums ${data.sp >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {data.sp >= 0 ? '+' : ''}{data.sp.toFixed(2)}%
                   </span>
                 </div>
                 <div className="border-t border-gray-50 pt-1.5 flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400">Alpha</span>
+                  <span className="text-[10px] text-gray-500">Alpha</span>
                   <span className={`text-[11px] font-bold tabular-nums ${alpha >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {alpha >= 0 ? '+' : ''}{alpha.toFixed(2)}%
                   </span>
@@ -543,7 +543,7 @@ export default function DashboardPage() {
 
         {/* Portfolio Summary */}
         <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm transition-all duration-300 hover:border-emerald-200 hover:shadow-emerald-100/50 hover:shadow-lg">
-          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Portfolio</h3>
+          <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">Portfolio</h3>
           {holdingsData ? (() => {
             const top7 = holdingsData.pieItems.slice(0, 7);
             const rest = holdingsData.pieItems.slice(7);
@@ -595,7 +595,7 @@ export default function DashboardPage() {
                     <div className={`text-xs font-semibold mt-1 ${holdingsData.totalGL >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {holdingsData.totalGL >= 0 ? '+' : ''}{fmtBig(holdingsData.totalGL)} ({holdingsData.totalGLPct >= 0 ? '+' : ''}{holdingsData.totalGLPct.toFixed(1)}%)
                     </div>
-                    <div className="text-[11px] text-gray-400">unrealized</div>
+                    <div className="text-[11px] text-gray-500">unrealized</div>
                   </div>
                 </div>
 
@@ -605,9 +605,9 @@ export default function DashboardPage() {
                     <div key={p.ticker} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: colors[i] }} />
-                        <span className={`text-[13px] font-semibold truncate ${p.isOther ? 'text-gray-400' : 'text-gray-800'}`}>{p.ticker}</span>
+                        <span className={`text-[13px] font-semibold truncate ${p.isOther ? 'text-gray-500' : 'text-gray-800'}`}>{p.ticker}</span>
                       </div>
-                      <span className={`text-[13px] tabular-nums font-medium shrink-0 ${p.isOther ? 'text-gray-300' : 'text-gray-500'}`}>{p.weight.toFixed(1)}%</span>
+                      <span className={`text-[13px] tabular-nums font-medium shrink-0 ${p.isOther ? 'text-gray-500' : 'text-gray-600'}`}>{p.weight.toFixed(1)}%</span>
                     </div>
                   ))}
                 </div>
@@ -622,7 +622,7 @@ export default function DashboardPage() {
 
         {/* Today's Movers */}
         <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm transition-all duration-300 hover:border-emerald-200 hover:shadow-emerald-100/50 hover:shadow-lg">
-          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4">Today&apos;s Movers</h3>
+          <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4">Today&apos;s Movers</h3>
           {holdingsData ? (
             <div className="space-y-4">
               {/* Winners */}
@@ -641,7 +641,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-left">
                           <div className="text-xs font-bold text-gray-900">{h.ticker}</div>
-                          <div className="text-[10px] text-gray-400">{fmt$(h.price)}</div>
+                          <div className="text-[10px] text-gray-500">{fmt$(h.price)}</div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                     </button>
                   ))}
                   {holdingsData.winners.length === 0 && (
-                    <div className="text-[10px] text-gray-300 text-center py-2">No gainers today</div>
+                    <div className="text-[10px] text-gray-500 text-center py-2">No gainers today</div>
                   )}
                 </div>
               </div>
@@ -676,7 +676,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-left">
                           <div className="text-xs font-bold text-gray-900">{h.ticker}</div>
-                          <div className="text-[10px] text-gray-400">{fmt$(h.price)}</div>
+                          <div className="text-[10px] text-gray-500">{fmt$(h.price)}</div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -688,7 +688,7 @@ export default function DashboardPage() {
                     </button>
                   ))}
                   {holdingsData.losers.length === 0 && (
-                    <div className="text-[10px] text-gray-300 text-center py-2">No losers today</div>
+                    <div className="text-[10px] text-gray-500 text-center py-2">No losers today</div>
                   )}
                 </div>
               </div>
@@ -708,7 +708,7 @@ export default function DashboardPage() {
             <div className="flex flex-col flex-1">
               {/* High Priority */}
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">High Priority</h3>
+                <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">High Priority</h3>
                 <span className="text-[10px] font-semibold text-red-400 bg-red-50 rounded-full px-2 py-0.5">
                   {taskData.high.length}
                 </span>
@@ -721,9 +721,9 @@ export default function DashboardPage() {
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-gray-900 truncate">{task.title}</div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {task.assignee && <span className="text-[10px] text-gray-400">{task.assignee}</span>}
+                        {task.assignee && <span className="text-[10px] text-gray-500">{task.assignee}</span>}
                         {task.subtasks?.length > 0 && (
-                          <span className="text-[10px] text-gray-300">
+                          <span className="text-[10px] text-gray-500">
                             {task.subtasks.filter(s => s.done).length}/{task.subtasks.length}
                           </span>
                         )}
@@ -732,7 +732,7 @@ export default function DashboardPage() {
                   </button>
                 ))}
                 {taskData.high.length === 0 && (
-                  <div className="text-[10px] text-gray-300 text-center py-3">No high priority tasks</div>
+                  <div className="text-[10px] text-gray-500 text-center py-3">No high priority tasks</div>
                 )}
               </div>
 
@@ -745,8 +745,8 @@ export default function DashboardPage() {
                 return (
                 <div className="mt-3 pt-3 border-t border-gray-50">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Other Tasks</h3>
-                    <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
+                    <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Other Tasks</h3>
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
                       {otherTasks.length}
                     </span>
                   </div>
@@ -754,21 +754,21 @@ export default function DashboardPage() {
                     {visible.map(task => (
                       <button key={task.id} onClick={() => router.push('/tasks')}
                         className="w-full flex items-start gap-2.5 px-2.5 py-1.5 rounded-xl hover:bg-gray-50 transition-colors text-left">
-                        <Circle size={12} className={`mt-0.5 shrink-0 ${task.priority === 'medium' ? 'text-amber-400' : 'text-gray-300'}`} strokeWidth={2.5} />
+                        <Circle size={12} className={`mt-0.5 shrink-0 ${task.priority === 'medium' ? 'text-amber-400' : 'text-gray-500'}`} strokeWidth={2.5} />
                         <div className="min-w-0 flex-1">
                           <div className="text-[11px] font-medium text-gray-700 truncate">{task.title}</div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[9px] font-bold uppercase tracking-wider ${task.priority === 'medium' ? 'text-amber-400' : 'text-gray-300'}`}>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${task.priority === 'medium' ? 'text-amber-400' : 'text-gray-500'}`}>
                               {task.priority}
                             </span>
-                            {task.assignee && <span className="text-[10px] text-gray-400">{task.assignee}</span>}
+                            {task.assignee && <span className="text-[10px] text-gray-500">{task.assignee}</span>}
                           </div>
                         </div>
                       </button>
                     ))}
                     {hidden > 0 && (
                       <button onClick={() => router.push('/tasks')}
-                        className="w-full text-center text-[10px] font-medium text-gray-400 hover:text-gray-600 pt-1.5 transition-colors">
+                        className="w-full text-center text-[10px] font-medium text-gray-500 hover:text-gray-600 pt-1.5 transition-colors">
                         +{hidden} more in task board
                       </button>
                     )}
@@ -781,7 +781,7 @@ export default function DashboardPage() {
               {taskData.total > 0 && (
                 <div className="pt-3 mt-auto border-t border-gray-50">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] text-gray-400">{taskData.completed.length} of {taskData.total} done</span>
+                    <span className="text-[10px] text-gray-500">{taskData.completed.length} of {taskData.total} done</span>
                     <span className="text-[10px] font-semibold text-gray-500">
                       {Math.round((taskData.completed.length / taskData.total) * 100)}%
                     </span>
@@ -889,8 +889,8 @@ export default function DashboardPage() {
         return (
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Fund Analytics</h3>
-              <span className="text-[10px] text-gray-300">{n} trading days</span>
+              <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Fund Analytics</h3>
+              <span className="text-[10px] text-gray-500">{n} trading days</span>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {metrics.map(m => {
@@ -898,11 +898,11 @@ export default function DashboardPage() {
                 return (
                   <div key={m.label} className={`bg-white rounded-2xl border border-gray-100 p-5 shadow-sm transition-all duration-300 hover:shadow-lg ${c.hoverBorder} ${c.hoverShadow} group`}>
                     <div className="flex items-start justify-between mb-3">
-                      <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{m.label}</span>
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{m.label}</span>
                       <span className={`w-2 h-2 rounded-full ${c.dot}`} />
                     </div>
                     <div className={`text-2xl font-bold tabular-nums ${c.text} mb-1`}>{m.value}</div>
-                    <div className="text-[10px] text-gray-400 mb-3">{m.sub}</div>
+                    <div className="text-[10px] text-gray-500 mb-3">{m.sub}</div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${c.bg} transition-all duration-700`}
                         style={{ width: `${m.bar}%` }} />

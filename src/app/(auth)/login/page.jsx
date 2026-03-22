@@ -32,16 +32,14 @@ export default function LoginPage() {
       <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-gray-200 shadow-xl shadow-gray-200/50 p-10">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-            <Image
-              src="/images/logo.png"
-              alt="B.D. Sterling Capital"
-              width={220}
-              height={60}
-              className="h-13 w-auto object-contain"
-              priority
-            />
-          </div>
+          <Image
+            src="/images/fms_logo.png"
+            alt="B.D. Sterling Capital"
+            width={220}
+            height={60}
+            className="h-13 w-auto object-contain"
+            priority
+          />
         </div>
 
         {/* Heading */}
@@ -49,8 +47,8 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
             Welcome back
           </h1>
-          <p className="text-sm text-gray-400">
-            Sign in to access the research platform
+          <p className="text-sm text-gray-500">
+            Sign in to access the Fund Management System
           </p>
         </div>
 
@@ -64,7 +62,7 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="username" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label htmlFor="username" className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
               Username
             </label>
             <input
@@ -80,7 +78,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <label htmlFor="password" className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
               Password
             </label>
             <input
@@ -113,8 +111,8 @@ export default function LoginPage() {
       </div>
 
       {/* Footer */}
-      <p className="text-center text-xs text-gray-400 mt-6">
-        B.D. Sterling Capital &middot; Research Platform
+      <p className="text-center text-xs text-gray-500 mt-6">
+        B.D. Sterling Capital &middot; Fund Management System
       </p>
     </div>
   );
