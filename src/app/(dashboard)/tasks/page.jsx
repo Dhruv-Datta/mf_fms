@@ -1492,8 +1492,8 @@ export default function TaskBoardPage() {
                                     {/* Right side: tags + actions */}
                                     <div className="flex items-center gap-0 ml-auto flex-shrink-0">
                                       {/* Subtask status */}
-                                      <div className="relative flex-shrink-0 transition-all duration-700 ease-in-out delay-0 group-hover/sub:delay-200 max-w-0 overflow-visible group-hover/sub:max-w-[120px] group-hover/sub:mr-2" ref={el => { statusAnchorRefs.current[pickerKey] = el; }}
-                                        style={sub.status ? { maxWidth: '120px', marginRight: '8px' } : {}}
+                                      <div className="relative flex-shrink-0 transition-all duration-700 ease-in-out delay-0 group-hover/sub:delay-200 max-w-0 overflow-hidden group-hover/sub:max-w-[120px] group-hover/sub:mr-2" ref={el => { statusAnchorRefs.current[pickerKey] = el; }}
+                                        style={sub.status ? { maxWidth: '120px', marginRight: '8px', overflow: 'visible' } : {}}
                                       >
                                         <StatusTag
                                           status={sub.status}
@@ -1518,8 +1518,8 @@ export default function TaskBoardPage() {
                                       </div>
 
                                       {/* Subtask assignee */}
-                                      <div className="relative flex-shrink-0 transition-all duration-700 ease-in-out delay-0 group-hover/sub:delay-200 max-w-0 overflow-visible group-hover/sub:max-w-[120px] group-hover/sub:mr-2" ref={el => { assigneeAnchorRefs.current[pickerKey] = el; }}
-                                        style={sub.assignee ? { maxWidth: '120px', marginRight: '8px' } : {}}
+                                      <div className="relative flex-shrink-0 transition-all duration-700 ease-in-out delay-0 group-hover/sub:delay-200 max-w-0 overflow-hidden group-hover/sub:max-w-[120px] group-hover/sub:mr-2" ref={el => { assigneeAnchorRefs.current[pickerKey] = el; }}
+                                        style={sub.assignee ? { maxWidth: '120px', marginRight: '8px', overflow: 'visible' } : {}}
                                       >
                                         <AssigneeTag
                                           assignee={sub.assignee}

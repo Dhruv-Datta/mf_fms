@@ -506,7 +506,7 @@ export default function HoldingsPage() {
                       const dayIsPos = p.dailyPnl >= 0;
                       const pnlIsPos = p.unrealizedPnl >= 0;
                       return (
-                        <tr key={p.ticker} className="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors duration-150">
+                        <tr key={p.ticker} className="border-b border-gray-50 hover:bg-white hover:shadow-[0_2px_16px_rgba(0,0,0,0.08)] hover:border-transparent relative hover:z-10 transition-all duration-200 cursor-default">
                           <td className="py-3.5 px-3">
                             <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-lg">
                               {p.ticker}
@@ -1252,7 +1252,7 @@ export default function HoldingsPage() {
                             return Number(v).toFixed(2);
                           };
                           return (
-                            <tr key={p.ticker} className="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors duration-150">
+                            <tr key={p.ticker} className="border-b border-gray-50 hover:bg-white hover:shadow-[0_2px_16px_rgba(0,0,0,0.08)] hover:border-transparent relative hover:z-10 transition-all duration-200 cursor-default">
                               <td className="py-3 px-2"><span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2 py-0.5 rounded-lg">{p.ticker}</span></td>
                               <td className="text-left py-3 px-2 text-gray-500 text-xs">{f.sector ? getSectorLabel(f.sector) : '—'}</td>
                               <td className="text-left py-3 px-2 text-gray-500 text-xs whitespace-nowrap">{f.industry || '—'}</td>

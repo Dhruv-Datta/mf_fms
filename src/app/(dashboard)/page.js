@@ -558,7 +558,7 @@ export default function DashboardPage() {
             return (
               <div className="flex flex-col gap-6">
                 {/* Donut with center label */}
-                <div className="relative w-52 h-52 mx-auto">
+                <div className="relative w-52 h-52 mx-auto" style={{ zIndex: 2 }}>
                   <Doughnut
                     data={{
                       labels: display.map(p => p.ticker),
@@ -576,15 +576,26 @@ export default function DashboardPage() {
                       plugins: {
                         legend: { display: false },
                         tooltip: {
-                          backgroundColor: 'rgba(255,255,255,0.95)',
-                          borderColor: '#e5e7eb',
-                          borderWidth: 1,
-                          titleColor: '#111827',
-                          bodyColor: '#6b7280',
-                          padding: 8,
-                          cornerRadius: 8,
-                          callbacks: {
-                            label: (ctx) => `${ctx.label}: ${ctx.parsed.toFixed(1)}%`,
+                          enabled: false,
+                          external: function(context) {
+                            let el = document.getElementById('pie-tooltip');
+                            if (!el) {
+                              el = document.createElement('div');
+                              el.id = 'pie-tooltip';
+                              el.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;box-shadow:0 4px 20px rgba(0,0,0,0.12);font-size:13px;font-weight:600;color:#111827;transition:opacity 0.15s;white-space:nowrap;';
+                              document.body.appendChild(el);
+                            }
+                            const tooltip = context.tooltip;
+                            if (tooltip.opacity === 0) { el.style.opacity = '0'; return; }
+                            const pos = context.chart.canvas.getBoundingClientRect();
+                            el.style.opacity = '1';
+                            el.style.left = pos.left + tooltip.caretX + 'px';
+                            el.style.top = pos.top + tooltip.caretY - 40 + 'px';
+                            el.style.transform = 'translateX(-50%)';
+                            if (tooltip.body) {
+                              const item = tooltip.dataPoints[0];
+                              el.innerHTML = '<span style="color:#6b7280;font-weight:500">' + item.label + '</span> <span style="margin-left:6px">' + item.parsed.toFixed(1) + '%</span>';
+                            }
                           },
                         },
                       },
