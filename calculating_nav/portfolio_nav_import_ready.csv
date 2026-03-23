@@ -1,0 +1,53 @@
+date,ticker,asset_type,shares,avg_price,last_price,market_value,cash_bucket,include_in_nav,source_image,notes
+2025-08-04,BKNG,equity,2.0,4672.97,5476.09,10952.18,,True,image (9).png,
+2025-08-04,UBER,equity,118.0,70.1,88.43,10434.74,,True,image (9).png,
+2025-08-04,ASML,equity,12.0,744.97,699.36,8392.32,,True,image (9).png,
+2025-08-04,GOOG,equity,38.0,181.67,195.75,7438.5,,True,image (9).png,
+2025-08-04,AAAU,equity,207.0,28.74,33.33,6899.31,,True,image (9).png,
+2025-08-04,BRK.B,equity,7.0,468.7,459.11,3213.77,,True,image (9).png,
+2025-08-04,UNH,equity,10.0,292.69,240.98,2409.8,,True,image (9).png,
+2025-08-04,AMZN,equity,10.0,199.15,211.65,2116.5,,True,image (9).png,
+2025-08-04,FI,equity,13.0,161.31,136.15,1769.95,,True,image (9).png,
+2025-08-04,HOOD,equity,11.0,43.11,106.37,1170.07,,True,image (9).png,
+2025-08-04,USD,cash,,,,919.0,USD_CASH,True,image (9).png,Cash balance from sheet
+2025-08-04,GRAB,cash_equivalent,,,,,CASH_EQUIVALENT,False,image (9).png,"Sheet says GRABW warrants not included, so value not visible in source image"
+2025-12-02,AAAU,equity,182.0,28.89,41.31,7520.0,,True,image (12).png,
+2025-12-02,ADBE,equity,10.0,321.68,340.08,3402.0,,True,image (12).png,
+2025-12-02,AMZN,equity,33.0,224.367,226.99,7490.0,,True,image (12).png,
+2025-12-02,ASML,equity,8.0,738.673,1117.95,8937.0,,True,image (12).png,
+2025-12-02,BKNG,equity,1.0,4647.94,5169.78,5170.0,,True,image (12).png,
+2025-12-02,CPRT,equity,36.0,38.958,38.38,1382.0,,True,image (12).png,
+2025-12-02,GOOG,equity,22.0,177.492,313.94,6905.0,,True,image (12).png,
+2025-12-02,MA,equity,12.0,548.324,538.5,6459.0,,True,image (12).png,
+2025-12-02,META,equity,5.0,642.918,667.35,3337.0,,True,image (12).png,
+2025-12-02,UBER,equity,118.0,70.107,92.3,10893.0,,True,image (12).png,
+2025-12-02,UNH,equity,14.0,302.505,324.25,4540.0,,True,image (12).png,
+2025-12-02,GRAB,cash_equivalent,27.0,0.68349,0.3465,9.0,CASH_EQUIVALENT,True,image (12).png,User requested GRAB be treated as cash value
+2025-12-02,USD,cash,,,,1180.0,USD_CASH,True,image (12).png,Cash balance from IBKR screenshot
+2026-01-20,AAAU,equity,76.0,28.89,46.67,3547.0,,True,image (13).png,
+2026-01-20,UNH,equity,16.0,306.526,334.0,5343.0,,True,image (13).png,
+2026-01-20,CPRT,equity,33.0,38.958,40.68,1343.0,,True,image (13).png,
+2026-01-20,META,equity,8.0,630.587,610.08,4882.0,,True,image (13).png,
+2026-01-20,ADBE,equity,27.0,302.413,290.28,7838.0,,True,image (13).png,
+2026-01-20,MA,equity,19.0,543.088,533.62,10140.0,,True,image (13).png,
+2026-01-20,BKNG,equity,1.0,4647.94,5019.16,5019.0,,True,image (13).png,
+2026-01-20,GOOG,equity,18.0,177.492,325.66,5861.0,,True,image (13).png,
+2026-01-20,AMZN,equity,37.0,225.477,234.45,8678.0,,True,image (13).png,
+2026-01-20,UBER,equity,97.0,70.107,82.92,8045.0,,True,image (13).png,
+2026-01-20,ASML,equity,5.0,738.673,1320.59,6603.0,,True,image (13).png,
+2026-01-20,GRAB,cash_equivalent,27.0,0.68349,0.2605,7.0,CASH_EQUIVALENT,True,image (13).png,User requested GRAB be treated as cash value
+2026-01-20,USD,cash,,,,1181.0,USD_CASH,True,image (13).png,Cash balance from IBKR screenshot
+2026-02-17,AAAU,equity,36.0,30.252,48.11,1732.0,,True,image (14).png,
+2026-02-17,ADBE,equity,27.0,302.413,260.2,7026.0,,True,image (14).png,
+2026-02-17,AMZN,equity,39.0,224.234,200.75,7830.0,,True,image (14).png,
+2026-02-17,ASML,equity,4.0,727.335,1421.6,5682.0,,True,image (14).png,
+2026-02-17,BKNG,equity,1.0,4647.94,4160.59,4161.0,,True,image (14).png,
+2026-02-17,CPRT,equity,0.0,38.958,37.39,0.0,,True,image (14).png,
+2026-02-17,GOOG,equity,18.0,175.286,302.21,5440.0,,True,image (14).png,
+2026-02-17,MA,equity,17.0,543.088,521.74,8869.0,,True,image (14).png,
+2026-02-17,META,equity,9.0,631.795,640.9,5768.0,,True,image (14).png,
+2026-02-17,NFLX,equity,52.0,76.889,76.95,4001.0,,True,image (14).png,
+2026-02-17,UBER,equity,115.0,70.852,70.52,8109.0,,True,image (14).png,
+2026-02-17,UNH,equity,16.0,306.526,290.44,4647.0,,True,image (14).png,
+2026-02-17,GRAB,cash_equivalent,27.0,0.68349,0.1706,5.0,CASH_EQUIVALENT,True,image (14).png,User requested GRAB be treated as cash value
+2026-02-17,USD,cash,,,,496.0,USD_CASH,True,image (14).png,Cash balance from IBKR screenshot
